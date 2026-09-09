@@ -1,0 +1,94 @@
+name: Verify live GitHub Pages publication
+on:
+  workflow_run:
+    workflows: ['Publish GitHub Pages']
+    types: [completed]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: verify-pages-publication
+  cancel-in-progress: true
+jobs:
+  verify:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Rebuild the exact published commit
+        env:
+          GITHUB_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: npm run build:pages
+      - name: Verify live content, module MIME types, and deployment revision
+        env:
+          EXPECTED_COMMIT: ${{ github.event.workflow_run.head_sha || github.sha }}
+          PAGES_URL: https://wieslawsoltes.github.io/AureonStudio/
+        run: |
+          python3 - <<'PY'
+          import concurrent.futures, hashlib, json, os, pathlib, time, urllib.parse, urllib.request
+          root = pathlib.Path('_site')
+          expected = os.environ['EXPECTED_COMMIT']
+          base = os.environ['PAGES_URL']
+          def get(name, attempt=0):
+              url = base + urllib.parse.quote(name, safe='/') + '?verify=' + expected + '&attempt=' + str(attempt)
+              request = urllib.request.Request(url, headers={'Cache-Control': 'no-cache', 'User-Agent': 'AureonStudio-Publication-Verification'})
+              with urllib.request.urlopen(request, timeout=30) as response:
+                  if response.status != 200:
+                      raise RuntimeError(f'{name}: HTTP {response.status}')
+                  return response.read(), response.headers.get_content_type()
+          last_error = None
+          for attempt in range(24):
+              try:
+                  data, _ = get('deployment.json', attempt)
+                  revision = json.loads(data)
+                  if revision.get('commit') != expected:
+                      raise RuntimeError(f'Deployed revision {revision.get("commit")} does not match {expected}')
+                  break
+              except Exception as error:
+                  last_error = str(error)
+                  time.sleep(5)
+          else:
+              raise SystemExit('Live deployment revision could not be verified: ' + str(last_error))
+          def verify(path):
+              name = path.relative_to(root).as_posix()
+              wanted = path.read_bytes()
+              last = None
+              for attempt in range(4):
+                  try:
+                      actual, mime = get(name, attempt)
+                      if actual != wanted:
+                          raise RuntimeError(f'{name}: content does not match the deployed commit')
+                      suffix = path.suffix.lower()
+                      if suffix in ('.js', '.mjs') and mime not in ('text/javascript', 'application/javascript', 'application/x-javascript'):
+                          raise RuntimeError(f'{name}: invalid JavaScript MIME type {mime}')
+                      if suffix == '.html' and mime != 'text/html':
+                          raise RuntimeError(f'{name}: invalid HTML MIME type {mime}')
+                      if suffix == '.css' and mime != 'text/css':
+                          raise RuntimeError(f'{name}: invalid CSS MIME type {mime}')
+                      return {'path': name, 'bytes': len(actual), 'mime': mime, 'sha256': hashlib.sha256(actual).hexdigest()}
+                  except Exception as error:
+                      last = str(error)
+                      time.sleep(2)
+              raise RuntimeError(last)
+          paths = sorted(path for path in root.rglob('*') if path.is_file())
+          with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
+              files = list(pool.map(verify, paths))
+          report = {'url': base, 'commit': expected, 'result': 'passed', 'verifiedFiles': len(files), 'files': files}
+          pathlib.Path('pages-verification.json').write_text(json.dumps(report, indent=2) + '\n')
+          summary = f'PUBLICATION VERIFIED: {len(files)} files; commit {expected}; {base}'
+          print(summary)
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as output:
+              output.write('## Live publication verified\n\n' + summary + '\n\nEvery published file matches the source build byte-for-byte. JavaScript, HTML and CSS MIME types are valid. This verifies hosting, not hardware-GPU rendering.\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: live-pages-verification
+          path: pages-verification.json
+          retention-days: 14
