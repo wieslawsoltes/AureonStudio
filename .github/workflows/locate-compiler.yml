@@ -1,0 +1,57 @@
+name: Isolate GPU compiler cost
+on:
+  push:
+    branches: [feat/production-systems-v03]
+    paths: [.github/workflows/locate-compiler.yml]
+permissions:
+  contents: read
+jobs:
+  probe:
+    strategy:
+      fail-fast: false
+      matrix:
+        omit: [initial-classification, medium-tracking, material-graph, interior-stack]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - run: |
+          python3 -m pip install -r requirements-dev.txt
+          python3 -m playwright install --with-deps chromium
+      - name: Compile diagnostic-only reduced call graph
+        env:
+          OMIT: ${{ matrix.omit }}
+        run: |
+          python3 -u - <<'PY'
+          import json,pathlib,subprocess,time,os
+          from playwright.sync_api import sync_playwright
+          def body(code,name,replacement):
+            start=code.index('{',code.index('fn '+name+'('));level=1;end=start+1
+            while level:
+              level+=(code[end]=='{')-(code[end]=='}');end+=1
+            return code[:start+1]+replacement+code[end-1:]
+          root=pathlib.Path('.');common=(root/'src/render/common.wgsl').read_text();code=common+'\n'+(root/'src/render/pathtrace.wgsl').read_text();omit=os.environ['OMIT']
+          if omit in ['initial-classification','interior-stack']:code=body(code,'initializeInteriors','interiorCount=0u;')
+          if omit=='interior-stack':
+            code=body(code,'currentInterior','return air();');code=body(code,'updateInterior','');code=body(code,'transmittedIOR','return select(1.,ior,front);')
+          if omit=='medium-tracking':code=body(code,'sampleMedium','return MediumEvent(limit,-1,vec3f(1.),0.,vec3f(0.),0.);')
+          if omit=='material-graph':code=body(code,'surfaceMaterial','return materials[index];')
+          out=root/'test-results/isolate';out.mkdir(parents=True,exist_ok=True);server=subprocess.Popen(['node','scripts/serve.mjs'],stdout=subprocess.DEVNULL);time.sleep(1)
+          with sync_playwright() as p:
+            browser=p.chromium.launch(headless=True,args=['--no-sandbox','--enable-unsafe-webgpu','--use-angle=swiftshader','--enable-features=Vulkan','--disable-vulkan-surface','--use-vulkan=swiftshader'])
+            page=browser.new_page();page.route('**/probe.html',lambda r:r.fulfill(status=200,content_type='text/html',body='<title>Diagnostic only</title>'));page.goto('http://localhost:4173/probe.html');page.on('console',lambda m:print(m.text,flush=True))
+            page.evaluate(r'''code=>{window.probe={done:false,steps:[]};void(async()=>{const step=(name,data)=>{probe.steps.push({name,data,ms:performance.now()});console.log(JSON.stringify(probe.steps.at(-1)));};try{const a=await navigator.gpu.requestAdapter();const d=await a.requestDevice();const m=d.createShaderModule({code});const info=await m.getCompilationInfo();step('module',info.messages.map(x=>({message:x.message,line:x.lineNum,type:x.type})));step('start',true);await d.createComputePipelineAsync({layout:'auto',compute:{module:m,entryPoint:'photonMain'}});step('compiled',true);}catch(e){step('error',String(e));}finally{probe.done=true;}})();}''',code)
+            for i in range(16):
+              time.sleep(5);result=page.evaluate('probe');result['diagnosticOnlyOmission']=omit;(out/(omit+'.json')).write_text(json.dumps(result,indent=2))
+              if result['done']:break
+            print(json.dumps(result,indent=2));browser.close()
+          server.terminate()
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: compiler-isolation-${{ matrix.omit }}
+          path: test-results/isolate/
+          retention-days: 3
