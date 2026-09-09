@@ -5,6 +5,7 @@ on:
     paths: ['.github/import/ready']
 permissions:
   contents: write
+  pages: read
 concurrency:
   group: source-import
   cancel-in-progress: false
@@ -13,53 +14,63 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: main
       - uses: actions/setup-node@v7
         with:
           node-version: '22'
           package-manager-cache: false
-      - name: Verify and materialize the supplied development snapshot
+      - name: Verify and unpack the complete source snapshot
         run: |
           python3 - <<'PY'
-          import base64, hashlib, io, pathlib, tarfile
+          import hashlib, io, pathlib, tarfile
           root = pathlib.Path('.')
-          parts = sorted((root / '.github/import').glob('source.*.b64'))
-          if len(parts) != 12:
+          parts = sorted((root / '.github/import').glob('source.*.xzpart'))
+          if len(parts) != 15:
               raise SystemExit('Incomplete source transfer')
-          text = ''.join(''.join(p.read_text().split()) for p in parts)
-          payload = base64.b64decode(text, validate=True)
-          expected = '42a18e2441c979101ac6b56c277559aa41f4076e1f0b3487e7a2631534bae71b'
-          if hashlib.sha256(payload).hexdigest() != expected:
-              raise SystemExit('Source snapshot checksum mismatch')
+          payload = b''.join(p.read_bytes() for p in parts)
+          if hashlib.sha256(payload).hexdigest() != '64270c22afb85e0653b623df24a5d0a27b54c6b9bad057b8b38529a103f1714a':
+              raise SystemExit('Source archive checksum mismatch')
           with tarfile.open(fileobj=io.BytesIO(payload), mode='r:xz') as archive:
               members = archive.getmembers()
-              if len(members) != 109:
-                  raise SystemExit('Unexpected source file count')
+              names = set()
+              if len(members) != 108 or sum(m.size for m in members) > 10000000:
+                  raise SystemExit('Unexpected source archive size')
               for member in members:
                   p = pathlib.PurePosixPath(member.name)
-                  if not member.isfile() or p.is_absolute() or '..' in p.parts or p.parts[0] in ('.git', '.github'):
-                      raise SystemExit('Unsafe archive member: ' + member.name)
+                  if not member.isfile() or p.is_absolute() or '..' in p.parts or p.parts[0] in ('.git', '.github') or member.name in names:
+                      raise SystemExit('Unsafe or duplicate archive member: ' + member.name)
+                  names.add(member.name)
               archive.extractall(root, filter='data')
-          count = 0
-          for line in (root / 'MANIFEST.sha256').read_text().splitlines():
-              expected_hash, path = line.split('  ', 1)
-              if path.startswith('.github/'):
-                  continue
-              if hashlib.sha256((root / path).read_bytes()).hexdigest() != expected_hash:
-                  raise SystemExit('File checksum mismatch: ' + path)
-              count += 1
-          print(f'Verified {count} source files and the source manifest.')
+          manifest = root / 'MANIFEST.sha256'
+          if hashlib.sha256(manifest.read_bytes()).hexdigest() != '075eb33b40b0be933b88ebd18d92b8c5f7f135d3babce99bccce88f995c319ce':
+              raise SystemExit('Source manifest checksum mismatch')
+          verified = set()
+          for line in manifest.read_text().splitlines():
+              expected, path = line.split('  ', 1)
+              if path not in names or hashlib.sha256((root / path).read_bytes()).hexdigest() != expected:
+                  raise SystemExit('Source file checksum mismatch: ' + path)
+              verified.add(path)
+          if verified | {'MANIFEST.sha256'} != names:
+              raise SystemExit('Source manifest does not cover the complete archive')
+          print(f'Verified {len(verified)} source files and their manifest.')
           PY
-      - name: Run CPU and Pages packaging tests
+      - name: Run CPU, HTTP and Pages packaging tests
         run: npm test
-      - name: Commit readable source files
+      - name: Commit editable source and remove transfer data
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           python3 - <<'PY'
           import pathlib, subprocess
           paths = [line.split('  ', 1)[1] for line in pathlib.Path('MANIFEST.sha256').read_text().splitlines()]
-          paths = [p for p in paths if not p.startswith('.github/')]
           subprocess.run(['git', 'add', '-f', '--', *paths, 'MANIFEST.sha256'], check=True)
           PY
-          git commit -m 'feat: publish Aureon Studio and Aureon Ray v0.2 source'
+          git rm -r -- .github/import
+          git commit -m 'feat: publish Aureon Studio and Aureon Ray v0.2 editable source'
           git push origin HEAD:main
+      - name: Inspect existing Pages configuration
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api repos/${{ github.repository }}/pages --jq '{html_url,build_type,source,status}'
