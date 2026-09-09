@@ -1,0 +1,2 @@
+# Optional: browser integration tests only; not an application runtime dependency.
+playwright>=1.50,<2

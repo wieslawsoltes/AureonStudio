@@ -1,0 +1,27 @@
+{
+  "scope": "CPU BVH only; same process and geometry; one warm-up build; seven trials; no GPU measurement",
+  "node": "v22.16.0",
+  "platform": "linux",
+  "cpu": "AMD EPYC 9V74 80-Core Processor",
+  "triangles": 8138,
+  "buildMs": [
+    137.37792399999998,
+    76.37640599999997,
+    76.977868,
+    67.62912199999994,
+    83.43066299999998,
+    63.957761000000005,
+    62.33580200000006
+  ],
+  "refitMs": [
+    9.841385000000002,
+    4.850881999999956,
+    5.404447000000005,
+    8.556164999999964,
+    10.021187000000054,
+    4.852945000000091,
+    4.272559000000001
+  ],
+  "medianBuildMs": 76.37640599999997,
+  "medianRefitMs": 5.404447000000005
+}

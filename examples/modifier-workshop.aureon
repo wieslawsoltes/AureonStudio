@@ -1,0 +1,372 @@
+{
+  "format": "aureon-studio",
+  "version": 1,
+  "name": "Modifier workshop",
+  "objects": [
+    {
+      "id": "amtt9bhkj26",
+      "name": "Ground",
+      "type": "plane",
+      "params": {
+        "width": 100,
+        "depth": 100,
+        "segments": 1
+      },
+      "mesh": null,
+      "parent": null,
+      "visible": true,
+      "locked": false,
+      "material": 0,
+      "position": [
+        0,
+        -0.05,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "modifiers": [],
+      "keys": []
+    },
+    {
+      "id": "amtt9bhkj22",
+      "name": "Twist study",
+      "type": "box",
+      "params": {
+        "width": 1.4,
+        "height": 3,
+        "depth": 1.4
+      },
+      "mesh": null,
+      "parent": null,
+      "visible": true,
+      "locked": false,
+      "material": 2,
+      "position": [
+        -3.3000000000000003,
+        1.5,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "modifiers": [
+        {
+          "type": "subdivide",
+          "value": 2,
+          "enabled": true
+        },
+        {
+          "type": "twist",
+          "value": 110,
+          "enabled": true
+        }
+      ],
+      "keys": []
+    },
+    {
+      "id": "amtt9bhkj23",
+      "name": "Bend study",
+      "type": "box",
+      "params": {
+        "width": 1.4,
+        "height": 3,
+        "depth": 1.4
+      },
+      "mesh": null,
+      "parent": null,
+      "visible": true,
+      "locked": false,
+      "material": 4,
+      "position": [
+        -1.1,
+        1.5,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "modifiers": [
+        {
+          "type": "subdivide",
+          "value": 2,
+          "enabled": true
+        },
+        {
+          "type": "bend",
+          "value": 80,
+          "enabled": true
+        }
+      ],
+      "keys": []
+    },
+    {
+      "id": "amtt9bhkj24",
+      "name": "Taper study",
+      "type": "box",
+      "params": {
+        "width": 1.4,
+        "height": 3,
+        "depth": 1.4
+      },
+      "mesh": null,
+      "parent": null,
+      "visible": true,
+      "locked": false,
+      "material": 5,
+      "position": [
+        1.1,
+        1.5,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "modifiers": [
+        {
+          "type": "subdivide",
+          "value": 2,
+          "enabled": true
+        },
+        {
+          "type": "taper",
+          "value": 0.7,
+          "enabled": true
+        }
+      ],
+      "keys": []
+    },
+    {
+      "id": "amtt9bhkj25",
+      "name": "Subdivision study",
+      "type": "box",
+      "params": {
+        "width": 1.4,
+        "height": 3,
+        "depth": 1.4
+      },
+      "mesh": null,
+      "parent": null,
+      "visible": true,
+      "locked": false,
+      "material": 1,
+      "position": [
+        3.3000000000000003,
+        1.5,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "modifiers": [
+        {
+          "type": "subdivide",
+          "value": 2,
+          "enabled": true
+        },
+        {
+          "type": "smooth",
+          "value": 2,
+          "enabled": true
+        }
+      ],
+      "keys": []
+    },
+    {
+      "id": "amtt9bhkj27",
+      "name": "Large softbox",
+      "type": "plane",
+      "params": {
+        "width": 5,
+        "depth": 5,
+        "segments": 1
+      },
+      "mesh": null,
+      "parent": null,
+      "visible": true,
+      "locked": false,
+      "material": 7,
+      "position": [
+        -2,
+        7,
+        3
+      ],
+      "rotation": [
+        155,
+        0,
+        -15
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "modifiers": [],
+      "keys": [],
+      "hiddenInViewport": true,
+      "cameraVisible": false
+    }
+  ],
+  "materials": [
+    {
+      "id": "amtt9bhkj1u",
+      "name": "Porcelain",
+      "color": "#deddd9",
+      "roughness": 0.35,
+      "metallic": 0,
+      "transmission": 0,
+      "ior": 1.5,
+      "emission": 0,
+      "pattern": "solid",
+      "patternScale": 3
+    },
+    {
+      "id": "amtt9bhkj1v",
+      "name": "Brushed titanium",
+      "color": "#aebbc9",
+      "roughness": 0.24,
+      "metallic": 1,
+      "transmission": 0,
+      "ior": 1.5,
+      "emission": 0,
+      "pattern": "solid",
+      "patternScale": 3
+    },
+    {
+      "id": "amtt9bhkj1w",
+      "name": "Burnished copper",
+      "color": "#d9956e",
+      "roughness": 0.19,
+      "metallic": 1,
+      "transmission": 0,
+      "ior": 1.5,
+      "emission": 0,
+      "pattern": "solid",
+      "patternScale": 3
+    },
+    {
+      "id": "amtt9bhkj1x",
+      "name": "Obsidian",
+      "color": "#292d36",
+      "roughness": 0.25,
+      "metallic": 0.25,
+      "transmission": 0,
+      "ior": 1.5,
+      "emission": 0,
+      "pattern": "solid",
+      "patternScale": 3
+    },
+    {
+      "id": "amtt9bhkj1y",
+      "name": "Cobalt ceramic",
+      "color": "#315d91",
+      "roughness": 0.22,
+      "metallic": 0,
+      "transmission": 0,
+      "ior": 1.5,
+      "emission": 0,
+      "pattern": "solid",
+      "patternScale": 3
+    },
+    {
+      "id": "amtt9bhkj1z",
+      "name": "Sage lacquer",
+      "color": "#778c78",
+      "roughness": 0.28,
+      "metallic": 0,
+      "transmission": 0,
+      "ior": 1.5,
+      "emission": 0,
+      "pattern": "solid",
+      "patternScale": 3
+    },
+    {
+      "id": "amtt9bhkj20",
+      "name": "Optical glass",
+      "color": "#fafbff",
+      "roughness": 0,
+      "metallic": 0,
+      "transmission": 1,
+      "ior": 1.5,
+      "emission": 0,
+      "pattern": "solid",
+      "patternScale": 3
+    },
+    {
+      "id": "amtt9bhkj21",
+      "name": "Softbox",
+      "color": "#ffffff",
+      "roughness": 0.35,
+      "metallic": 0,
+      "transmission": 0,
+      "ior": 1.5,
+      "emission": 12,
+      "pattern": "solid",
+      "patternScale": 3
+    }
+  ],
+  "camera": {
+    "target": [
+      0,
+      1,
+      0
+    ],
+    "yaw": 0.56,
+    "pitch": 0.4,
+    "distance": 12,
+    "fov": 42,
+    "projection": "perspective",
+    "aperture": 0,
+    "focus": 8.5
+  },
+  "settings": {
+    "samples": 128,
+    "bounces": 6,
+    "exposure": 0.2,
+    "environment": 0.5,
+    "resolution": 0.75,
+    "view": "beauty"
+  },
+  "animation": {
+    "start": 0,
+    "end": 120,
+    "fps": 24,
+    "frame": 0,
+    "interpolation": "smooth"
+  }
+}

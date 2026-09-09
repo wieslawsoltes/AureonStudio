@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aureon Ray — Standalone renderer</title>
+<style>
+html,body{margin:0;height:100%;font:14px system-ui;background:#17191e;color:#eee}body{display:flex;flex-direction:column}header{display:flex;align-items:center;gap:18px;padding:14px 20px}h1{font-size:16px;margin:0}#status{flex:1;color:#a6adb7}canvas{display:block;width:100%;flex:1;min-height:100px}button{padding:9px 12px;background:#303641;border:1px solid #505869;border-radius:5px;color:inherit;cursor:pointer}
+</style>
+</head>
+<body><header><h1>Aureon Ray · library example</h1><span id="status">Initializing WebGPU…</span><button id="reset">Restart</button><button id="save">Save PNG</button></header><canvas id="render"></canvas>
+<script type="module">
+import {AureonRayRenderer,Scene,compileTriangles,buildBVH,FileFormats} from '../src/index.js';
+const status=document.querySelector('#status');
+const renderer=new AureonRayRenderer(document.querySelector('#render'),message=>status.textContent=message);
+try {
+ await renderer.init();
+ const doc=Scene.demoDocument();
+ doc.settings.samples=256;
+ doc.settings.resolution=.75;
+ const compiled=compileTriangles(doc,new Scene.GeometryCache());
+ const scene=buildBVH(compiled.triangles,compiled.materials);
+ renderer.setAssets(doc);
+ renderer.setScene(scene,compiled.materials);
+ renderer.mode='trace';
+ document.querySelector('#reset').onclick=()=>renderer.reset();
+ document.querySelector('#save').onclick=async()=>{
+  try{FileFormats.download(await renderer.capturePNG(),'aureon-ray.png');}
+  catch(e){status.textContent=e.message;}
+ };
+ const tick=async()=>{
+  try {
+   // render() applies backpressure with a queue fence; no growing GPU job queue.
+   await renderer.render(doc);
+   status.textContent=`${renderer.samples} / ${doc.settings.samples} samples · ${renderer.canvas.width} × ${renderer.canvas.height}`;
+  }catch(e){status.textContent=e.message;return;}
+  requestAnimationFrame(tick);
+ };
+ await tick();
+}catch(e){status.textContent=e.message;}
+</script></body></html>

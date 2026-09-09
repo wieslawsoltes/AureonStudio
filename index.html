@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+ <head>
+  <meta charset="utf-8"/>
+  <meta content="width=device-width, initial-scale=1" name="viewport"/>
+  <meta content="#191b20" name="theme-color"/>
+  <meta content="Aureon Studio — 3D modeling, animation and WebGPU compute path tracing." name="description"/>
+  <title>
+   Aureon Studio — Orbit study
+  </title>
+  <link href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath fill='%23eda569' d='M16 3 30 28H2Z'/%3E%3Cpath fill='%23191b20' d='m16 11 7 13H9Z'/%3E%3C/svg%3E" rel="icon"/>
+  <link href="styles.css" rel="stylesheet"/>
+ </head>
+ <body>
+  <div id="app">
+   <header class="topbar">
+    <a aria-label="Aureon Studio" class="brand" href="#">
+     <span id="brand-icon">
+     </span>
+     <strong>
+      AUREON
+     </strong>
+     <span class="brand-sub">
+      STUDIO
+     </span>
+    </a>
+    <nav aria-label="Main menu" id="main-menu">
+    </nav>
+    <div class="top-right">
+     <span class="gpu-dot">
+     </span>
+     <span id="gpu-label">
+      Connecting GPU
+     </span>
+     <button class="quiet" id="palette-button" title="Command palette (Ctrl+K)">
+      ⌘ K
+     </button>
+     <span class="avatar" title="Local workspace. No account or uploads.">
+      WS
+     </span>
+    </div>
+   </header>
+   <section class="projectbar">
+    <div class="project-name">
+     <span class="crumb">
+      Workspace
+     </span>
+     <span class="slash">
+      /
+     </span>
+     <input aria-label="Scene name" id="project-name" value="Orbit study"/>
+     <span class="file-tag">
+      SCENE
+     </span>
+     <span class="save-state" id="save-state">
+      Local workspace
+     </span>
+    </div>
+    <div aria-label="Workspace" class="workspaces" role="tablist">
+     <button class="active" data-workspace="model" role="tab">
+      Model
+     </button>
+     <button data-workspace="material" role="tab">
+      Materials
+     </button>
+     <button data-workspace="animate" role="tab">
+      Animate
+     </button>
+     <button data-workspace="render" role="tab">
+      Render
+     </button>
+    </div>
+    <button class="primary" id="render-button">
+    </button>
+   </section>
+   <section class="toolbar">
+    <div class="toolgroup" id="transform-tools">
+    </div>
+    <span class="divider">
+    </span>
+    <select aria-label="Selection level" id="selection-mode">
+     <option value="object">
+      Object
+     </option>
+     <option value="face">
+      Polygon
+     </option>
+     <option value="vertex">
+      Vertex
+     </option>
+    </select>
+    <select aria-label="Translation reference" id="coordinate-space" title="Translation coordinate reference. Rotation and scale edit local transform channels.">
+     <option value="world">
+      World translate
+     </option>
+     <option value="local">
+      Local translate
+     </option>
+    </select>
+    <span class="divider">
+    </span>
+    <div class="toolgroup" id="edit-tools">
+    </div>
+    <span class="divider">
+    </span>
+    <button class="tool" id="snap-button" title="Grid snap (S)">
+    </button>
+    <input aria-label="Snap spacing" id="snap-size" min="0.01" step="0.05" title="Snap spacing" type="number" value="0.25"/>
+    <div class="toolbar-end">
+     <button class="quiet" id="create-button">
+     </button>
+     <button class="quiet" id="help-button">
+     </button>
+    </div>
+   </section>
+   <main class="workspace">
+    <aside class="left-panel panel">
+     <div class="panel-heading">
+      <span>
+       Scene explorer
+      </span>
+      <button class="icon-button" id="add-object" title="Create object">
+      </button>
+     </div>
+     <label class="searchbox">
+      <span id="scene-search-icon">
+      </span>
+      <input aria-label="Search scene" id="scene-search" placeholder="Find in scene…"/>
+      <kbd>
+       /
+      </kbd>
+     </label>
+     <div class="scene-head">
+      <span>
+       Name
+      </span>
+      <span>
+       VIS
+      </span>
+     </div>
+     <div aria-label="Scene objects" class="scene-tree" id="scene-tree" role="tree">
+     </div>
+     <div class="scene-summary">
+      <span id="object-count">
+       0 objects
+      </span>
+      <span id="selected-count">
+       No selection
+      </span>
+     </div>
+     <section class="create-section">
+      <div class="panel-heading">
+       <span>
+        Create geometry
+       </span>
+       <span class="tiny-label">
+        PRIMITIVES
+       </span>
+      </div>
+      <div class="primitive-grid" id="primitive-grid">
+      </div>
+      <button class="import-button" id="import-button">
+      </button>
+     </section>
+     <div class="local-note">
+      <span class="status-dot">
+      </span>
+      Private by design
+      <span>
+       Files stay on this device
+      </span>
+     </div>
+    </aside>
+    <section class="center">
+     <div class="viewport-bar">
+      <div class="view-label">
+       <span class="view-dot">
+       </span>
+       <select aria-label="Viewport camera" id="projection">
+        <option value="perspective">
+         Perspective
+        </option>
+        <option value="top">
+         Top
+        </option>
+        <option value="front">
+         Front
+        </option>
+        <option value="right">
+         Right
+        </option>
+       </select>
+       <span class="small-separator">
+        /
+       </span>
+       <select aria-label="Viewport shading" id="shading">
+        <option value="beauty">
+         Studio shaded
+        </option>
+        <option value="albedo">
+         Albedo
+        </option>
+        <option value="normals">
+         Normals
+        </option>
+        <option value="depth">
+         Depth
+        </option>
+        <option value="objects">
+         Object IDs
+        </option>
+       </select>
+      </div>
+      <div class="view-actions">
+       <button id="wireframe-button" title="Toggle wireframe (F4)">
+       </button>
+       <button class="active" id="grid-button" title="Toggle grid (G)">
+       </button>
+       <button id="fit-button" title="Frame selection (F)">
+       </button>
+      </div>
+     </div>
+     <div class="viewport" id="viewport">
+      <canvas aria-label="Interactive 3D viewport" id="gpu-canvas" tabindex="0">
+      </canvas>
+      <svg class="gizmo" id="gizmo" xmlns="http://www.w3.org/2000/svg">
+      </svg>
+      <div class="viewport-top-left">
+       <span class="mode-badge" id="mode-badge">
+        STUDIO VIEWPORT
+       </span>
+       <div class="viewport-stats" id="viewport-stats">
+        Preparing geometry
+       </div>
+      </div>
+      <div class="axis-widget" id="axis-widget">
+       <button class="axis-y" data-view="top">
+        Y
+       </button>
+       <button class="axis-z" data-view="front">
+        Z
+       </button>
+       <button class="axis-x" data-view="right">
+        X
+       </button>
+       <span class="axis-origin">
+       </span>
+      </div>
+      <div class="viewport-bottom-left">
+       <span id="selection-label">
+        Orbit study
+       </span>
+       <span id="navigation-hint">
+        Alt + drag to orbit · Scroll to dolly · F to frame
+       </span>
+      </div>
+      <div class="render-progress" hidden="" id="render-progress">
+       <div>
+        <span class="status-dot">
+        </span>
+        <b>
+         Aureon Ray
+        </b>
+        <span id="samples-label">
+         0 / 128 spp
+        </span>
+       </div>
+       <div class="progress-track">
+        <i id="sample-progress">
+        </i>
+       </div>
+       <div class="render-progress-footer">
+        <span id="render-time">
+         Progressive path tracing
+        </span>
+        <button id="pause-render" title="Pause rendering">
+        </button>
+       </div>
+      </div>
+      <div class="gpu-error" hidden="" id="gpu-error">
+      </div>
+      <div class="build-indicator" hidden="" id="build-indicator">
+       Updating acceleration structure…
+      </div>
+     </div>
+     <section class="asset-dock">
+      <div class="dock-header">
+       <div class="dock-tabs">
+        <button class="active" data-dock="materials">
+         Material library
+        </button>
+        <button data-dock="keys">
+         Animation keys
+        </button>
+       </div>
+       <div id="dock-tools">
+       </div>
+      </div>
+      <div class="material-library" id="material-library">
+      </div>
+      <div class="keys-dock" hidden="" id="keys-dock">
+      </div>
+     </section>
+     <section class="timeline">
+      <div class="timeline-header">
+       <div class="playback" id="playback">
+       </div>
+       <input aria-label="Current frame" id="frame-number" type="number" value="0"/>
+       <span class="timeline-divider">
+        /
+       </span>
+       <input aria-label="End frame" id="end-frame" min="1" type="number" value="120"/>
+       <span class="fps-label">
+        <input aria-label="Frames per second" id="fps" max="120" min="1" type="number" value="24"/>
+        fps
+       </span>
+       <div class="timeline-right">
+        <button id="auto-key">
+         Auto key
+        </button>
+        <button id="set-key">
+        </button>
+        <button id="curve-button" title="Curve editor">
+        </button>
+       </div>
+      </div>
+      <div class="ruler-wrap">
+       <div class="ruler" id="ruler">
+       </div>
+       <div class="key-markers" id="key-markers">
+       </div>
+       <input aria-label="Timeline frame" id="frame-slider" max="120" min="0" type="range" value="0"/>
+       <span class="playhead" id="playhead">
+       </span>
+      </div>
+     </section>
+    </section>
+    <aside class="right-panel panel">
+     <div class="inspector-tabs">
+      <button class="active" data-tab="object" title="Object properties">
+      </button>
+      <button data-tab="modify" title="Modifier stack">
+      </button>
+      <button data-tab="material" title="Material properties">
+      </button>
+      <button data-tab="render" title="Render settings">
+      </button>
+     </div>
+     <div class="inspector" id="inspector">
+     </div>
+    </aside>
+   </main>
+   <footer class="statusbar">
+    <div>
+     <span class="status-dot">
+     </span>
+     <span id="status-message">
+      Ready
+     </span>
+    </div>
+    <div class="status-right">
+     <span id="history-label">
+      All changes local
+     </span>
+     <span class="status-separator">
+     </span>
+     <span id="render-backend">
+      WebGPU
+     </span>
+     <span class="status-separator">
+     </span>
+     <span>
+      1 unit = 1 m
+     </span>
+    </div>
+   </footer>
+  </div>
+  <div class="toast" id="toast" role="status">
+  </div>
+  <div class="menu-popup" hidden="" id="menu-popup">
+  </div>
+  <dialog id="dialog">
+  </dialog>
+  <input accept=".aureon,.json,.obj,.stl" hidden="" id="file-input" type="file"/>
+  <script src="src/app.js" type="module">
+  </script>
+ </body>
+</html>

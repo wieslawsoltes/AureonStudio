@@ -1,0 +1,57 @@
+[
+  {
+    "file": "animated-orbit.aureon",
+    "objects": 10,
+    "triangles": 8138
+  },
+  {
+    "file": "bitmap-node-materials.aureon",
+    "objects": 4,
+    "triangles": 736
+  },
+  {
+    "file": "deformation-lab.aureon",
+    "objects": 7,
+    "triangles": 7896
+  },
+  {
+    "file": "empty-scene.aureon",
+    "objects": 0,
+    "triangles": 0
+  },
+  {
+    "file": "glass-materials.aureon",
+    "objects": 10,
+    "triangles": 8138
+  },
+  {
+    "file": "modifier-workshop.aureon",
+    "objects": 6,
+    "triangles": 3652
+  },
+  {
+    "file": "motion-blur.aureon",
+    "objects": 4,
+    "triangles": 536
+  },
+  {
+    "file": "orbit-study.aureon",
+    "objects": 10,
+    "triangles": 8138
+  },
+  {
+    "file": "photon-caustics.aureon",
+    "objects": 4,
+    "triangles": 1478
+  },
+  {
+    "file": "solid-uv-workshop.aureon",
+    "objects": 6,
+    "triangles": 240
+  },
+  {
+    "file": "volume-subsurface.aureon",
+    "objects": 4,
+    "triangles": 968
+  }
+]

@@ -1,0 +1,473 @@
+{
+  "format": "aureon-studio",
+  "version": 1,
+  "name": "Orbit study",
+  "objects": [
+    {
+      "id": "amtt9bhk6a",
+      "name": "Studio floor",
+      "type": "plane",
+      "params": {
+        "width": 200,
+        "depth": 200,
+        "segments": 1
+      },
+      "mesh": null,
+      "parent": null,
+      "visible": true,
+      "locked": false,
+      "material": 8,
+      "position": [
+        0,
+        -0.09,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "modifiers": [],
+      "keys": []
+    },
+    {
+      "id": "amtt9bhk6b",
+      "name": "Exhibition plinth",
+      "type": "cylinder",
+      "params": {
+        "radius": 2.5,
+        "height": 0.22,
+        "segments": 80,
+        "heightSegments": 1
+      },
+      "mesh": null,
+      "parent": null,
+      "visible": true,
+      "locked": false,
+      "material": 3,
+      "position": [
+        0,
+        0.04,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "modifiers": [],
+      "keys": []
+    },
+    {
+      "id": "amtt9bhk6c",
+      "name": "Raised stage",
+      "type": "cylinder",
+      "params": {
+        "radius": 1.75,
+        "height": 0.15,
+        "segments": 64,
+        "heightSegments": 1
+      },
+      "mesh": null,
+      "parent": null,
+      "visible": true,
+      "locked": false,
+      "material": 0,
+      "position": [
+        -0.15,
+        0.225,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "modifiers": [],
+      "keys": []
+    },
+    {
+      "id": "amtt9bhk6d",
+      "name": "Orbit · copper",
+      "type": "torus",
+      "params": {
+        "radius": 1.32,
+        "tube": 0.22,
+        "segments": 72,
+        "sides": 24
+      },
+      "mesh": null,
+      "parent": null,
+      "visible": true,
+      "locked": false,
+      "material": 2,
+      "position": [
+        -0.7,
+        1.83,
+        -0.35
+      ],
+      "rotation": [
+        90,
+        0,
+        -18
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "modifiers": [],
+      "keys": []
+    },
+    {
+      "id": "amtt9bhk6e",
+      "name": "Satellite · porcelain",
+      "type": "sphere",
+      "params": {
+        "radius": 0.72,
+        "segments": 40,
+        "rings": 28
+      },
+      "mesh": null,
+      "parent": null,
+      "visible": true,
+      "locked": false,
+      "material": 0,
+      "position": [
+        0.72,
+        1.02,
+        0.58
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "modifiers": [],
+      "keys": []
+    },
+    {
+      "id": "amtt9bhk6f",
+      "name": "Satellite · titanium",
+      "type": "sphere",
+      "params": {
+        "radius": 0.43,
+        "segments": 32,
+        "rings": 20
+      },
+      "mesh": null,
+      "parent": null,
+      "visible": true,
+      "locked": false,
+      "material": 1,
+      "position": [
+        -1,
+        0.73,
+        0.65
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "modifiers": [],
+      "keys": []
+    },
+    {
+      "id": "amtt9bhk6g",
+      "name": "Monolith · cobalt",
+      "type": "box",
+      "params": {
+        "width": 0.8,
+        "height": 1.45,
+        "depth": 0.8
+      },
+      "mesh": null,
+      "parent": null,
+      "visible": true,
+      "locked": false,
+      "material": 4,
+      "position": [
+        1.05,
+        1.02,
+        -0.65
+      ],
+      "rotation": [
+        0,
+        20,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "modifiers": [],
+      "keys": []
+    },
+    {
+      "id": "amtt9bhk6h",
+      "name": "Satellite · sage",
+      "type": "sphere",
+      "params": {
+        "radius": 0.3,
+        "segments": 24,
+        "rings": 16
+      },
+      "mesh": null,
+      "parent": null,
+      "visible": true,
+      "locked": false,
+      "material": 5,
+      "position": [
+        1.65,
+        0.45,
+        0.65
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "modifiers": [],
+      "keys": []
+    },
+    {
+      "id": "amtt9bhk6i",
+      "name": "Key softbox",
+      "type": "plane",
+      "params": {
+        "width": 4,
+        "depth": 4,
+        "segments": 1
+      },
+      "mesh": null,
+      "parent": null,
+      "visible": true,
+      "locked": false,
+      "material": 7,
+      "position": [
+        -3,
+        6,
+        3
+      ],
+      "rotation": [
+        155,
+        0,
+        -22
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "modifiers": [],
+      "keys": [],
+      "hiddenInViewport": true,
+      "cameraVisible": false
+    },
+    {
+      "id": "amtt9bhk6j",
+      "name": "Rim softbox",
+      "type": "plane",
+      "params": {
+        "width": 3,
+        "depth": 4,
+        "segments": 1
+      },
+      "mesh": null,
+      "parent": null,
+      "visible": true,
+      "locked": false,
+      "material": 7,
+      "position": [
+        3,
+        4,
+        -4
+      ],
+      "rotation": [
+        45,
+        0,
+        30
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "modifiers": [],
+      "keys": [],
+      "hiddenInViewport": true,
+      "cameraVisible": false
+    }
+  ],
+  "materials": [
+    {
+      "id": "amtt9bhk61",
+      "name": "Porcelain",
+      "color": "#deddd9",
+      "roughness": 0.35,
+      "metallic": 0,
+      "transmission": 0,
+      "ior": 1.5,
+      "emission": 0,
+      "pattern": "solid",
+      "patternScale": 3
+    },
+    {
+      "id": "amtt9bhk62",
+      "name": "Brushed titanium",
+      "color": "#aebbc9",
+      "roughness": 0.24,
+      "metallic": 1,
+      "transmission": 0,
+      "ior": 1.5,
+      "emission": 0,
+      "pattern": "solid",
+      "patternScale": 3
+    },
+    {
+      "id": "amtt9bhk63",
+      "name": "Burnished copper",
+      "color": "#d9956e",
+      "roughness": 0.19,
+      "metallic": 1,
+      "transmission": 0,
+      "ior": 1.5,
+      "emission": 0,
+      "pattern": "solid",
+      "patternScale": 3
+    },
+    {
+      "id": "amtt9bhk64",
+      "name": "Obsidian",
+      "color": "#292d36",
+      "roughness": 0.25,
+      "metallic": 0.25,
+      "transmission": 0,
+      "ior": 1.5,
+      "emission": 0,
+      "pattern": "solid",
+      "patternScale": 3
+    },
+    {
+      "id": "amtt9bhk65",
+      "name": "Cobalt ceramic",
+      "color": "#315d91",
+      "roughness": 0.22,
+      "metallic": 0,
+      "transmission": 0,
+      "ior": 1.5,
+      "emission": 0,
+      "pattern": "solid",
+      "patternScale": 3
+    },
+    {
+      "id": "amtt9bhk66",
+      "name": "Sage lacquer",
+      "color": "#778c78",
+      "roughness": 0.28,
+      "metallic": 0,
+      "transmission": 0,
+      "ior": 1.5,
+      "emission": 0,
+      "pattern": "solid",
+      "patternScale": 3
+    },
+    {
+      "id": "amtt9bhk67",
+      "name": "Optical glass",
+      "color": "#fafbff",
+      "roughness": 0,
+      "metallic": 0,
+      "transmission": 1,
+      "ior": 1.5,
+      "emission": 0,
+      "pattern": "solid",
+      "patternScale": 3
+    },
+    {
+      "id": "amtt9bhk68",
+      "name": "Softbox",
+      "color": "#ffffff",
+      "roughness": 0.35,
+      "metallic": 0,
+      "transmission": 0,
+      "ior": 1.5,
+      "emission": 12,
+      "pattern": "solid",
+      "patternScale": 3
+    },
+    {
+      "id": "amtt9bhk69",
+      "name": "Studio gray",
+      "color": "#aaa9a6",
+      "roughness": 0.7,
+      "metallic": 0,
+      "transmission": 0,
+      "ior": 1.5,
+      "emission": 0,
+      "pattern": "solid",
+      "patternScale": 3
+    }
+  ],
+  "camera": {
+    "target": [
+      0,
+      1.3,
+      0
+    ],
+    "yaw": 0.56,
+    "pitch": 0.4,
+    "distance": 8.5,
+    "fov": 42,
+    "projection": "perspective",
+    "aperture": 0,
+    "focus": 8.5
+  },
+  "settings": {
+    "samples": 128,
+    "bounces": 6,
+    "exposure": 0.2,
+    "environment": 0.5,
+    "resolution": 0.75,
+    "view": "beauty"
+  },
+  "animation": {
+    "start": 0,
+    "end": 120,
+    "fps": 24,
+    "frame": 0,
+    "interpolation": "smooth"
+  }
+}

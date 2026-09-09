@@ -1,0 +1,267 @@
+{
+  "format": "aureon-studio",
+  "version": 1,
+  "name": "Surface photon caustics",
+  "objects": [
+    {
+      "id": "amtt9bhlg3x",
+      "name": "Ground",
+      "type": "plane",
+      "params": {
+        "width": 30,
+        "depth": 30,
+        "segments": 1
+      },
+      "mesh": null,
+      "parent": null,
+      "visible": true,
+      "locked": false,
+      "material": 0,
+      "position": [
+        0,
+        -0.02,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "modifiers": [],
+      "keys": []
+    },
+    {
+      "id": "amtt9bhlg3y",
+      "name": "Area light",
+      "type": "plane",
+      "params": {
+        "width": 5,
+        "depth": 5,
+        "segments": 1
+      },
+      "mesh": null,
+      "parent": null,
+      "visible": true,
+      "locked": false,
+      "material": 7,
+      "position": [
+        -2,
+        6,
+        3
+      ],
+      "rotation": [
+        155,
+        0,
+        -15
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "modifiers": [],
+      "keys": [],
+      "hiddenInViewport": true,
+      "cameraVisible": false
+    },
+    {
+      "id": "amtt9bhlg3z",
+      "name": "Refractive sphere",
+      "type": "sphere",
+      "params": {
+        "radius": 0.9,
+        "segments": 32,
+        "rings": 24
+      },
+      "mesh": null,
+      "parent": null,
+      "visible": true,
+      "locked": false,
+      "material": 6,
+      "position": [
+        0,
+        1.05,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "modifiers": [],
+      "keys": []
+    },
+    {
+      "id": "amtt9bhlg40",
+      "name": "Diffuse backdrop",
+      "type": "plane",
+      "params": {
+        "width": 10,
+        "depth": 5,
+        "segments": 1
+      },
+      "mesh": null,
+      "parent": null,
+      "visible": true,
+      "locked": false,
+      "material": 0,
+      "position": [
+        0,
+        2.5,
+        -3
+      ],
+      "rotation": [
+        90,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "modifiers": [],
+      "keys": []
+    }
+  ],
+  "materials": [
+    {
+      "id": "amtt9bhlg3p",
+      "name": "Porcelain",
+      "color": "#deddd9",
+      "roughness": 0.35,
+      "metallic": 0,
+      "transmission": 0,
+      "ior": 1.5,
+      "emission": 0,
+      "pattern": "solid",
+      "patternScale": 3
+    },
+    {
+      "id": "amtt9bhlg3q",
+      "name": "Brushed titanium",
+      "color": "#aebbc9",
+      "roughness": 0.24,
+      "metallic": 1,
+      "transmission": 0,
+      "ior": 1.5,
+      "emission": 0,
+      "pattern": "solid",
+      "patternScale": 3
+    },
+    {
+      "id": "amtt9bhlg3r",
+      "name": "Burnished copper",
+      "color": "#d9956e",
+      "roughness": 0.19,
+      "metallic": 1,
+      "transmission": 0,
+      "ior": 1.5,
+      "emission": 0,
+      "pattern": "solid",
+      "patternScale": 3
+    },
+    {
+      "id": "amtt9bhlg3s",
+      "name": "Obsidian",
+      "color": "#292d36",
+      "roughness": 0.25,
+      "metallic": 0.25,
+      "transmission": 0,
+      "ior": 1.5,
+      "emission": 0,
+      "pattern": "solid",
+      "patternScale": 3
+    },
+    {
+      "id": "amtt9bhlg3t",
+      "name": "Cobalt ceramic",
+      "color": "#315d91",
+      "roughness": 0.22,
+      "metallic": 0,
+      "transmission": 0,
+      "ior": 1.5,
+      "emission": 0,
+      "pattern": "solid",
+      "patternScale": 3
+    },
+    {
+      "id": "amtt9bhlg3u",
+      "name": "Sage lacquer",
+      "color": "#778c78",
+      "roughness": 0.28,
+      "metallic": 0,
+      "transmission": 0,
+      "ior": 1.5,
+      "emission": 0,
+      "pattern": "solid",
+      "patternScale": 3
+    },
+    {
+      "id": "amtt9bhlg3v",
+      "name": "Optical glass",
+      "color": "#fafbff",
+      "roughness": 0,
+      "metallic": 0,
+      "transmission": 1,
+      "ior": 1.5,
+      "emission": 0,
+      "pattern": "solid",
+      "patternScale": 3
+    },
+    {
+      "id": "amtt9bhlg3w",
+      "name": "Softbox",
+      "color": "#ffffff",
+      "roughness": 0.35,
+      "metallic": 0,
+      "transmission": 0,
+      "ior": 1.5,
+      "emission": 12,
+      "pattern": "solid",
+      "patternScale": 3
+    }
+  ],
+  "camera": {
+    "target": [
+      0,
+      1.3,
+      0
+    ],
+    "yaw": 0.56,
+    "pitch": 0.4,
+    "distance": 10,
+    "fov": 42,
+    "projection": "perspective",
+    "aperture": 0,
+    "focus": 8.5
+  },
+  "settings": {
+    "samples": 256,
+    "bounces": 12,
+    "exposure": 0.2,
+    "environment": 0.08,
+    "resolution": 0.75,
+    "view": "beauty",
+    "integrator": "finalGather",
+    "photonCount": 32768,
+    "photonRadius": 0.22
+  },
+  "animation": {
+    "start": 0,
+    "end": 120,
+    "fps": 24,
+    "frame": 0,
+    "interpolation": "smooth"
+  }
+}

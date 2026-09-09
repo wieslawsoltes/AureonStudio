@@ -1,0 +1,454 @@
+TAP version 13
+# Subtest: TRS matrices round-trip under nonuniform scale and rotations
+ok 1 - TRS matrices round-trip under nonuniform scale and rotations
+  ---
+  duration_ms: 2.904076
+  type: 'test'
+  ...
+# Subtest: Singular matrices are rejected
+ok 2 - Singular matrices are rejected
+  ---
+  duration_ms: 0.353624
+  type: 'test'
+  ...
+# Subtest: WebGPU projection maps near plane to 0 and far plane to 1
+ok 3 - WebGPU projection maps near plane to 0 and far plane to 1
+  ---
+  duration_ms: 0.166902
+  type: 'test'
+  ...
+# Subtest: Ray/AABB handles zero components and rays on slab boundaries
+ok 4 - Ray/AABB handles zero components and rays on slab boundaries
+  ---
+  duration_ms: 0.181334
+  type: 'test'
+  ...
+# Subtest: Ray triangle returns barycentric coordinates and distance
+ok 5 - Ray triangle returns barycentric coordinates and distance
+  ---
+  duration_ms: 0.241045
+  type: 'test'
+  ...
+# Subtest: box: valid finite triangulated mesh
+ok 6 - box: valid finite triangulated mesh
+  ---
+  duration_ms: 0.509429
+  type: 'test'
+  ...
+# Subtest: sphere: valid finite triangulated mesh
+ok 7 - sphere: valid finite triangulated mesh
+  ---
+  duration_ms: 4.312134
+  type: 'test'
+  ...
+# Subtest: cylinder: valid finite triangulated mesh
+ok 8 - cylinder: valid finite triangulated mesh
+  ---
+  duration_ms: 0.753858
+  type: 'test'
+  ...
+# Subtest: torus: valid finite triangulated mesh
+ok 9 - torus: valid finite triangulated mesh
+  ---
+  duration_ms: 22.577551
+  type: 'test'
+  ...
+# Subtest: cone: valid finite triangulated mesh
+ok 10 - cone: valid finite triangulated mesh
+  ---
+  duration_ms: 0.703322
+  type: 'test'
+  ...
+# Subtest: plane: valid finite triangulated mesh
+ok 11 - plane: valid finite triangulated mesh
+  ---
+  duration_ms: 0.143667
+  type: 'test'
+  ...
+# Subtest: capsule: valid finite triangulated mesh
+ok 12 - capsule: valid finite triangulated mesh
+  ---
+  duration_ms: 2.762683
+  type: 'test'
+  ...
+# Subtest: lathe: valid finite triangulated mesh
+ok 13 - lathe: valid finite triangulated mesh
+  ---
+  duration_ms: 2.040562
+  type: 'test'
+  ...
+# Subtest: box: closed manifold and outward winding
+ok 14 - box: closed manifold and outward winding
+  ---
+  duration_ms: 0.279772
+  type: 'test'
+  ...
+# Subtest: sphere: closed manifold and outward winding
+ok 15 - sphere: closed manifold and outward winding
+  ---
+  duration_ms: 3.715601
+  type: 'test'
+  ...
+# Subtest: cylinder: closed manifold and outward winding
+ok 16 - cylinder: closed manifold and outward winding
+  ---
+  duration_ms: 0.738135
+  type: 'test'
+  ...
+# Subtest: torus: closed manifold and outward winding
+ok 17 - torus: closed manifold and outward winding
+  ---
+  duration_ms: 3.233254
+  type: 'test'
+  ...
+# Subtest: cone: closed manifold and outward winding
+ok 18 - cone: closed manifold and outward winding
+  ---
+  duration_ms: 0.250338
+  type: 'test'
+  ...
+# Subtest: capsule: closed manifold and outward winding
+ok 19 - capsule: closed manifold and outward winding
+  ---
+  duration_ms: 2.192721
+  type: 'test'
+  ...
+# Subtest: lathe: closed manifold and outward winding
+ok 20 - lathe: closed manifold and outward winding
+  ---
+  duration_ms: 1.879699
+  type: 'test'
+  ...
+# Subtest: Box has exact volume and dimensions
+ok 21 - Box has exact volume and dimensions
+  ---
+  duration_ms: 0.227524
+  type: 'test'
+  ...
+# Subtest: Cone has an exact shared apex, not a tiny top cap
+ok 22 - Cone has an exact shared apex, not a tiny top cap
+  ---
+  duration_ms: 0.156015
+  type: 'test'
+  ...
+# Subtest: Concave polygon triangulation preserves area
+ok 23 - Concave polygon triangulation preserves area
+  ---
+  duration_ms: 0.373263
+  type: 'test'
+  ...
+# Subtest: Invalid mesh indices and nonfinite positions are rejected
+ok 24 - Invalid mesh indices and nonfinite positions are rejected
+  ---
+  duration_ms: 0.158259
+  type: 'test'
+  ...
+# Subtest: Extrusion preserves a closed manifold and adds exact volume
+ok 25 - Extrusion preserves a closed manifold and adds exact volume
+  ---
+  duration_ms: 0.416158
+  type: 'test'
+  ...
+# Subtest: Radial inset preserves volume at zero extrusion
+ok 26 - Radial inset preserves volume at zero extrusion
+  ---
+  duration_ms: 0.192871
+  type: 'test'
+  ...
+# Subtest: Face deletion changes only the specified polygon
+ok 27 - Face deletion changes only the specified polygon
+  ---
+  duration_ms: 0.108975
+  type: 'test'
+  ...
+# Subtest: Subdivision preserves volume and manifold topology
+ok 28 - Subdivision preserves volume and manifold topology
+  ---
+  duration_ms: 0.470611
+  type: 'test'
+  ...
+# Subtest: Catmull–Clark refines topology and preserves symmetry
+ok 29 - Catmull–Clark refines topology and preserves symmetry
+  ---
+  duration_ms: 1.080442
+  type: 'test'
+  ...
+# Subtest: Catmull–Clark applies boundary vertex weights on an open plane
+ok 30 - Catmull–Clark applies boundary vertex weights on an open plane
+  ---
+  duration_ms: 0.219441
+  type: 'test'
+  ...
+# Subtest: subdivide modifier evaluates without mutating its source
+ok 31 - subdivide modifier evaluates without mutating its source
+  ---
+  duration_ms: 1.09262
+  type: 'test'
+  ...
+# Subtest: smooth modifier evaluates without mutating its source
+ok 32 - smooth modifier evaluates without mutating its source
+  ---
+  duration_ms: 1.049575
+  type: 'test'
+  ...
+# Subtest: twist modifier evaluates without mutating its source
+ok 33 - twist modifier evaluates without mutating its source
+  ---
+  duration_ms: 0.207183
+  type: 'test'
+  ...
+# Subtest: bend modifier evaluates without mutating its source
+ok 34 - bend modifier evaluates without mutating its source
+  ---
+  duration_ms: 0.276267
+  type: 'test'
+  ...
+# Subtest: taper modifier evaluates without mutating its source
+ok 35 - taper modifier evaluates without mutating its source
+  ---
+  duration_ms: 0.293744
+  type: 'test'
+  ...
+# Subtest: noise modifier evaluates without mutating its source
+ok 36 - noise modifier evaluates without mutating its source
+  ---
+  duration_ms: 0.649942
+  type: 'test'
+  ...
+# Subtest: mirror modifier evaluates without mutating its source
+ok 37 - mirror modifier evaluates without mutating its source
+  ---
+  duration_ms: 0.260013
+  type: 'test'
+  ...
+# Subtest: shell modifier evaluates without mutating its source
+ok 38 - shell modifier evaluates without mutating its source
+  ---
+  duration_ms: 0.484802
+  type: 'test'
+  ...
+# Subtest: Shell closes open plane boundary with correctly oriented walls
+ok 39 - Shell closes open plane boundary with correctly oriented walls
+  ---
+  duration_ms: 0.223548
+  type: 'test'
+  ...
+# Subtest: Disabled modifier returns unchanged geometry
+ok 40 - Disabled modifier returns unchanged geometry
+  ---
+  duration_ms: 0.704354
+  type: 'test'
+  ...
+# Subtest: History supports atomic undo/redo and failure rollback
+ok 41 - History supports atomic undo/redo and failure rollback
+  ---
+  duration_ms: 0.383839
+  type: 'test'
+  ...
+# Subtest: History drops redo branch after a new edit
+ok 42 - History drops redo branch after a new edit
+  ---
+  duration_ms: 0.128394
+  type: 'test'
+  ...
+# Subtest: Scene format round-trips with modifiers and animation
+ok 43 - Scene format round-trips with modifiers and animation
+  ---
+  duration_ms: 4.011759
+  type: 'test'
+  ...
+# Subtest: Scene validation rejects hierarchy cycles and unsupported versions
+ok 44 - Scene validation rejects hierarchy cycles and unsupported versions
+  ---
+  duration_ms: 1.910325
+  type: 'test'
+  ...
+# Subtest: Scene validation rejects missing parents and material references
+ok 45 - Scene validation rejects missing parents and material references
+  ---
+  duration_ms: 1.705867
+  type: 'test'
+  ...
+# Subtest: Animation: step, linear, smooth and duplicate frame replacement
+ok 46 - Animation: step, linear, smooth and duplicate frame replacement
+  ---
+  duration_ms: 0.400114
+  type: 'test'
+  ...
+# Subtest: Hierarchy composes parent transforms without modifying children
+ok 47 - Hierarchy composes parent transforms without modifying children
+  ---
+  duration_ms: 0.148564
+  type: 'test'
+  ...
+# Subtest: Geometry cache invalidates parameter and modifier changes
+ok 48 - Geometry cache invalidates parameter and modifier changes
+  ---
+  duration_ms: 0.150808
+  type: 'test'
+  ...
+# Subtest: Camera projection and picking rays agree
+ok 49 - Camera projection and picking rays agree
+  ---
+  duration_ms: 0.333163
+  type: 'test'
+  ...
+# Subtest: BVH nodes, triangle order and light CDF satisfy packing invariants
+ok 50 - BVH nodes, triangle order and light CDF satisfy packing invariants
+  ---
+  duration_ms: 0.10573
+  type: 'test'
+  ...
+# Subtest: Every emissive triangle stores a matching area probability for MIS
+ok 51 - Every emissive triangle stores a matching area probability for MIS
+  ---
+  duration_ms: 0.073621
+  type: 'test'
+  ...
+# Subtest: BVH traversal agrees with brute force for deterministic random rays
+ok 52 - BVH traversal agrees with brute force for deterministic random rays
+  ---
+  duration_ms: 794.852948
+  type: 'test'
+  ...
+# Subtest: Empty scene BVH is safe to query
+ok 53 - Empty scene BVH is safe to query
+  ---
+  duration_ms: 0.370269
+  type: 'test'
+  ...
+# Subtest: OBJ import supports negative indices and texture coordinates
+ok 54 - OBJ import supports negative indices and texture coordinates
+  ---
+  duration_ms: 0.524993
+  type: 'test'
+  ...
+# Subtest: OBJ import rejects invalid indices
+ok 55 - OBJ import rejects invalid indices
+  ---
+  duration_ms: 0.129725
+  type: 'test'
+  ...
+# Subtest: OBJ world-space export/import preserves box bounds
+ok 56 - OBJ world-space export/import preserves box bounds
+  ---
+  duration_ms: 0.530411
+  type: 'test'
+  ...
+# Subtest: Binary STL round-trip preserves triangle count and bounds
+ok 57 - Binary STL round-trip preserves triangle count and bounds
+  ---
+  duration_ms: 1.12563
+  type: 'test'
+  ...
+# Subtest: ASCII STL parser accepts signed exponential numbers
+ok 58 - ASCII STL parser accepts signed exponential numbers
+  ---
+  duration_ms: 0.317539
+  type: 'test'
+  ...
+# Subtest: glTF static export has aligned in-bounds accessors and data URI
+ok 59 - glTF static export has aligned in-bounds accessors and data URI
+  ---
+  duration_ms: 0.881752
+  type: 'test'
+  ...
+# Subtest: PFM export stores unclamped linear HDR in little endian bottom-up order
+ok 60 - PFM export stores unclamped linear HDR in little endian bottom-up order
+  ---
+  duration_ms: 0.260113
+  type: 'test'
+  ...
+# Subtest: Relative OBJ indices are resolved at each face, not cached as raw tokens
+ok 61 - Relative OBJ indices are resolved at each face, not cached as raw tokens
+  ---
+  duration_ms: 0.162645
+  type: 'test'
+  ...
+# Subtest: Lathe collapses on-axis profile endpoints to exact manifold apices
+ok 62 - Lathe collapses on-axis profile endpoints to exact manifold apices
+  ---
+  duration_ms: 1.088334
+  type: 'test'
+  ...
+# Subtest: Cylinder accepts an exact zero top radius
+ok 63 - Cylinder accepts an exact zero top radius
+  ---
+  duration_ms: 0.226692
+  type: 'test'
+  ...
+# Subtest: Cylinder side normals do not average in cap normals
+ok 64 - Cylinder side normals do not average in cap normals
+  ---
+  duration_ms: 1.329197
+  type: 'test'
+  ...
+# Subtest: Reflected instances keep geometric and shading normal orientations consistent
+ok 65 - Reflected instances keep geometric and shading normal orientations consistent
+  ---
+  duration_ms: 0.547056
+  type: 'test'
+  ...
+# Subtest: Reflected OBJ and STL snapshots retain positive signed volume
+ok 66 - Reflected OBJ and STL snapshots retain positive signed volume
+  ---
+  duration_ms: 0.725005
+  type: 'test'
+  ...
+# Subtest: BVH refit matches a fresh build under deformation and updated emission
+ok 67 - BVH refit matches a fresh build under deformation and updated emission
+  ---
+  duration_ms: 377.171351
+  type: 'test'
+  ...
+# Subtest: Refit rejects mismatched triangle counts
+ok 68 - Refit rejects mismatched triangle counts
+  ---
+  duration_ms: 110.066728
+  type: 'test'
+  ...
+# Subtest: History prunes old transactions by approximate memory budget
+ok 69 - History prunes old transactions by approximate memory budget
+  ---
+  duration_ms: 0.300825
+  type: 'test'
+  ...
+# Subtest: Example orbit-study: document validates and compiles finite triangle data
+ok 70 - Example orbit-study: document validates and compiles finite triangle data
+  ---
+  duration_ms: 141.842228
+  type: 'test'
+  ...
+# Subtest: Example empty-scene: document validates and compiles finite triangle data
+ok 71 - Example empty-scene: document validates and compiles finite triangle data
+  ---
+  duration_ms: 10.555614
+  type: 'test'
+  ...
+# Subtest: Example glass-materials: document validates and compiles finite triangle data
+ok 72 - Example glass-materials: document validates and compiles finite triangle data
+  ---
+  duration_ms: 94.306584
+  type: 'test'
+  ...
+# Subtest: Example animated-orbit: document validates and compiles finite triangle data
+ok 73 - Example animated-orbit: document validates and compiles finite triangle data
+  ---
+  duration_ms: 166.411222
+  type: 'test'
+  ...
+# Subtest: Example modifier-workshop: document validates and compiles finite triangle data
+ok 74 - Example modifier-workshop: document validates and compiles finite triangle data
+  ---
+  duration_ms: 69.861561
+  type: 'test'
+  ...
+1..74
+# tests 74
+# suites 0
+# pass 74
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1814.541111

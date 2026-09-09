@@ -1,0 +1,968 @@
+
+> aureon-studio@0.2.0 test
+> node --test tests/*.test.mjs
+
+TAP version 13
+# Subtest: Coordinator HTTP: auth, CORS, leasing, heartbeat, binary merge, EXR, cancellation
+ok 1 - Coordinator HTTP: auth, CORS, leasing, heartbeat, binary merge, EXR, cancellation
+  ---
+  duration_ms: 202.897177
+  type: 'test'
+  ...
+# Subtest: TRS matrices round-trip under nonuniform scale and rotations
+ok 2 - TRS matrices round-trip under nonuniform scale and rotations
+  ---
+  duration_ms: 3.645078
+  type: 'test'
+  ...
+# Subtest: Singular matrices are rejected
+ok 3 - Singular matrices are rejected
+  ---
+  duration_ms: 0.466974
+  type: 'test'
+  ...
+# Subtest: WebGPU projection maps near plane to 0 and far plane to 1
+ok 4 - WebGPU projection maps near plane to 0 and far plane to 1
+  ---
+  duration_ms: 0.177738
+  type: 'test'
+  ...
+# Subtest: Ray/AABB handles zero components and rays on slab boundaries
+ok 5 - Ray/AABB handles zero components and rays on slab boundaries
+  ---
+  duration_ms: 0.185119
+  type: 'test'
+  ...
+# Subtest: Ray triangle returns barycentric coordinates and distance
+ok 6 - Ray triangle returns barycentric coordinates and distance
+  ---
+  duration_ms: 0.202966
+  type: 'test'
+  ...
+# Subtest: box: valid finite triangulated mesh
+ok 7 - box: valid finite triangulated mesh
+  ---
+  duration_ms: 0.466914
+  type: 'test'
+  ...
+# Subtest: sphere: valid finite triangulated mesh
+ok 8 - sphere: valid finite triangulated mesh
+  ---
+  duration_ms: 5.137027
+  type: 'test'
+  ...
+# Subtest: cylinder: valid finite triangulated mesh
+ok 9 - cylinder: valid finite triangulated mesh
+  ---
+  duration_ms: 0.581637
+  type: 'test'
+  ...
+# Subtest: torus: valid finite triangulated mesh
+ok 10 - torus: valid finite triangulated mesh
+  ---
+  duration_ms: 9.714571
+  type: 'test'
+  ...
+# Subtest: cone: valid finite triangulated mesh
+ok 11 - cone: valid finite triangulated mesh
+  ---
+  duration_ms: 0.717482
+  type: 'test'
+  ...
+# Subtest: plane: valid finite triangulated mesh
+ok 12 - plane: valid finite triangulated mesh
+  ---
+  duration_ms: 0.19902
+  type: 'test'
+  ...
+# Subtest: capsule: valid finite triangulated mesh
+ok 13 - capsule: valid finite triangulated mesh
+  ---
+  duration_ms: 6.001561
+  type: 'test'
+  ...
+# Subtest: lathe: valid finite triangulated mesh
+ok 14 - lathe: valid finite triangulated mesh
+  ---
+  duration_ms: 1.588466
+  type: 'test'
+  ...
+# Subtest: box: closed manifold and outward winding
+ok 15 - box: closed manifold and outward winding
+  ---
+  duration_ms: 0.276858
+  type: 'test'
+  ...
+# Subtest: sphere: closed manifold and outward winding
+ok 16 - sphere: closed manifold and outward winding
+  ---
+  duration_ms: 10.826839
+  type: 'test'
+  ...
+# Subtest: cylinder: closed manifold and outward winding
+ok 17 - cylinder: closed manifold and outward winding
+  ---
+  duration_ms: 0.475958
+  type: 'test'
+  ...
+# Subtest: torus: closed manifold and outward winding
+ok 18 - torus: closed manifold and outward winding
+  ---
+  duration_ms: 4.434518
+  type: 'test'
+  ...
+# Subtest: cone: closed manifold and outward winding
+ok 19 - cone: closed manifold and outward winding
+  ---
+  duration_ms: 0.300163
+  type: 'test'
+  ...
+# Subtest: capsule: closed manifold and outward winding
+ok 20 - capsule: closed manifold and outward winding
+  ---
+  duration_ms: 4.203499
+  type: 'test'
+  ...
+# Subtest: lathe: closed manifold and outward winding
+ok 21 - lathe: closed manifold and outward winding
+  ---
+  duration_ms: 1.309766
+  type: 'test'
+  ...
+# Subtest: Box has exact volume and dimensions
+ok 22 - Box has exact volume and dimensions
+  ---
+  duration_ms: 0.159301
+  type: 'test'
+  ...
+# Subtest: Cone has an exact shared apex, not a tiny top cap
+ok 23 - Cone has an exact shared apex, not a tiny top cap
+  ---
+  duration_ms: 0.173161
+  type: 'test'
+  ...
+# Subtest: Concave polygon triangulation preserves area
+ok 24 - Concave polygon triangulation preserves area
+  ---
+  duration_ms: 0.309256
+  type: 'test'
+  ...
+# Subtest: Invalid mesh indices and nonfinite positions are rejected
+ok 25 - Invalid mesh indices and nonfinite positions are rejected
+  ---
+  duration_ms: 0.146872
+  type: 'test'
+  ...
+# Subtest: Extrusion preserves a closed manifold and adds exact volume
+ok 26 - Extrusion preserves a closed manifold and adds exact volume
+  ---
+  duration_ms: 0.913297
+  type: 'test'
+  ...
+# Subtest: Radial inset preserves volume at zero extrusion
+ok 27 - Radial inset preserves volume at zero extrusion
+  ---
+  duration_ms: 0.209686
+  type: 'test'
+  ...
+# Subtest: Face deletion changes only the specified polygon
+ok 28 - Face deletion changes only the specified polygon
+  ---
+  duration_ms: 0.121222
+  type: 'test'
+  ...
+# Subtest: Subdivision preserves volume and manifold topology
+ok 29 - Subdivision preserves volume and manifold topology
+  ---
+  duration_ms: 0.607736
+  type: 'test'
+  ...
+# Subtest: Catmull–Clark refines topology and preserves symmetry
+ok 30 - Catmull–Clark refines topology and preserves symmetry
+  ---
+  duration_ms: 0.982201
+  type: 'test'
+  ...
+# Subtest: Catmull–Clark applies boundary vertex weights on an open plane
+ok 31 - Catmull–Clark applies boundary vertex weights on an open plane
+  ---
+  duration_ms: 0.21194
+  type: 'test'
+  ...
+# Subtest: bevel modifier evaluates without mutating its source
+ok 32 - bevel modifier evaluates without mutating its source
+  ---
+  duration_ms: 5.667838
+  type: 'test'
+  ...
+# Subtest: subdivide modifier evaluates without mutating its source
+ok 33 - subdivide modifier evaluates without mutating its source
+  ---
+  duration_ms: 0.704513
+  type: 'test'
+  ...
+# Subtest: smooth modifier evaluates without mutating its source
+ok 34 - smooth modifier evaluates without mutating its source
+  ---
+  duration_ms: 1.530288
+  type: 'test'
+  ...
+# Subtest: twist modifier evaluates without mutating its source
+ok 35 - twist modifier evaluates without mutating its source
+  ---
+  duration_ms: 4.954412
+  type: 'test'
+  ...
+# Subtest: bend modifier evaluates without mutating its source
+ok 36 - bend modifier evaluates without mutating its source
+  ---
+  duration_ms: 0.317519
+  type: 'test'
+  ...
+# Subtest: taper modifier evaluates without mutating its source
+ok 37 - taper modifier evaluates without mutating its source
+  ---
+  duration_ms: 0.380194
+  type: 'test'
+  ...
+# Subtest: noise modifier evaluates without mutating its source
+ok 38 - noise modifier evaluates without mutating its source
+  ---
+  duration_ms: 0.665955
+  type: 'test'
+  ...
+# Subtest: mirror modifier evaluates without mutating its source
+ok 39 - mirror modifier evaluates without mutating its source
+  ---
+  duration_ms: 0.286071
+  type: 'test'
+  ...
+# Subtest: shell modifier evaluates without mutating its source
+ok 40 - shell modifier evaluates without mutating its source
+  ---
+  duration_ms: 3.170601
+  type: 'test'
+  ...
+# Subtest: Shell closes open plane boundary with correctly oriented walls
+ok 41 - Shell closes open plane boundary with correctly oriented walls
+  ---
+  duration_ms: 0.22569
+  type: 'test'
+  ...
+# Subtest: Disabled modifier returns unchanged geometry
+ok 42 - Disabled modifier returns unchanged geometry
+  ---
+  duration_ms: 4.636964
+  type: 'test'
+  ...
+# Subtest: History supports atomic undo/redo and failure rollback
+ok 43 - History supports atomic undo/redo and failure rollback
+  ---
+  duration_ms: 0.47803
+  type: 'test'
+  ...
+# Subtest: History drops redo branch after a new edit
+ok 44 - History drops redo branch after a new edit
+  ---
+  duration_ms: 0.128074
+  type: 'test'
+  ...
+# Subtest: Scene format round-trips with modifiers and animation
+ok 45 - Scene format round-trips with modifiers and animation
+  ---
+  duration_ms: 4.469551
+  type: 'test'
+  ...
+# Subtest: Scene validation rejects hierarchy cycles and unsupported versions
+ok 46 - Scene validation rejects hierarchy cycles and unsupported versions
+  ---
+  duration_ms: 4.406686
+  type: 'test'
+  ...
+# Subtest: Scene validation rejects missing parents and material references
+ok 47 - Scene validation rejects missing parents and material references
+  ---
+  duration_ms: 1.685212
+  type: 'test'
+  ...
+# Subtest: Animation: step, linear, smooth and duplicate frame replacement
+ok 48 - Animation: step, linear, smooth and duplicate frame replacement
+  ---
+  duration_ms: 0.303558
+  type: 'test'
+  ...
+# Subtest: Hierarchy composes parent transforms without modifying children
+ok 49 - Hierarchy composes parent transforms without modifying children
+  ---
+  duration_ms: 0.15193
+  type: 'test'
+  ...
+# Subtest: Geometry cache invalidates parameter and modifier changes
+ok 50 - Geometry cache invalidates parameter and modifier changes
+  ---
+  duration_ms: 0.181394
+  type: 'test'
+  ...
+# Subtest: Camera projection and picking rays agree
+ok 51 - Camera projection and picking rays agree
+  ---
+  duration_ms: 14.853913
+  type: 'test'
+  ...
+# Subtest: BVH nodes, triangle order and light CDF satisfy packing invariants
+ok 52 - BVH nodes, triangle order and light CDF satisfy packing invariants
+  ---
+  duration_ms: 0.118248
+  type: 'test'
+  ...
+# Subtest: Every emissive triangle stores a matching area probability for MIS
+ok 53 - Every emissive triangle stores a matching area probability for MIS
+  ---
+  duration_ms: 0.077637
+  type: 'test'
+  ...
+# Subtest: BVH traversal agrees with brute force for deterministic random rays
+ok 54 - BVH traversal agrees with brute force for deterministic random rays
+  ---
+  duration_ms: 708.715155
+  type: 'test'
+  ...
+# Subtest: Empty scene BVH is safe to query
+ok 55 - Empty scene BVH is safe to query
+  ---
+  duration_ms: 0.338501
+  type: 'test'
+  ...
+# Subtest: OBJ import supports negative indices and texture coordinates
+ok 56 - OBJ import supports negative indices and texture coordinates
+  ---
+  duration_ms: 0.618984
+  type: 'test'
+  ...
+# Subtest: OBJ import rejects invalid indices
+ok 57 - OBJ import rejects invalid indices
+  ---
+  duration_ms: 0.137257
+  type: 'test'
+  ...
+# Subtest: OBJ world-space export/import preserves box bounds
+ok 58 - OBJ world-space export/import preserves box bounds
+  ---
+  duration_ms: 0.540345
+  type: 'test'
+  ...
+# Subtest: Binary STL round-trip preserves triangle count and bounds
+ok 59 - Binary STL round-trip preserves triangle count and bounds
+  ---
+  duration_ms: 0.92842
+  type: 'test'
+  ...
+# Subtest: ASCII STL parser accepts signed exponential numbers
+ok 60 - ASCII STL parser accepts signed exponential numbers
+  ---
+  duration_ms: 0.327074
+  type: 'test'
+  ...
+# Subtest: glTF static export has aligned in-bounds accessors and data URI
+ok 61 - glTF static export has aligned in-bounds accessors and data URI
+  ---
+  duration_ms: 0.816972
+  type: 'test'
+  ...
+# Subtest: PFM export stores unclamped linear HDR in little endian bottom-up order
+ok 62 - PFM export stores unclamped linear HDR in little endian bottom-up order
+  ---
+  duration_ms: 0.207092
+  type: 'test'
+  ...
+# Subtest: Relative OBJ indices are resolved at each face, not cached as raw tokens
+ok 63 - Relative OBJ indices are resolved at each face, not cached as raw tokens
+  ---
+  duration_ms: 0.171959
+  type: 'test'
+  ...
+# Subtest: Lathe collapses on-axis profile endpoints to exact manifold apices
+ok 64 - Lathe collapses on-axis profile endpoints to exact manifold apices
+  ---
+  duration_ms: 0.370369
+  type: 'test'
+  ...
+# Subtest: Cylinder accepts an exact zero top radius
+ok 65 - Cylinder accepts an exact zero top radius
+  ---
+  duration_ms: 0.136697
+  type: 'test'
+  ...
+# Subtest: Cylinder side normals do not average in cap normals
+ok 66 - Cylinder side normals do not average in cap normals
+  ---
+  duration_ms: 0.557331
+  type: 'test'
+  ...
+# Subtest: Reflected instances keep geometric and shading normal orientations consistent
+ok 67 - Reflected instances keep geometric and shading normal orientations consistent
+  ---
+  duration_ms: 0.430128
+  type: 'test'
+  ...
+# Subtest: Reflected OBJ and STL snapshots retain positive signed volume
+ok 68 - Reflected OBJ and STL snapshots retain positive signed volume
+  ---
+  duration_ms: 0.57706
+  type: 'test'
+  ...
+# Subtest: BVH refit matches a fresh build under deformation and updated emission
+ok 69 - BVH refit matches a fresh build under deformation and updated emission
+  ---
+  duration_ms: 314.705274
+  type: 'test'
+  ...
+# Subtest: Refit rejects mismatched triangle counts
+ok 70 - Refit rejects mismatched triangle counts
+  ---
+  duration_ms: 130.345435
+  type: 'test'
+  ...
+# Subtest: History prunes old transactions by approximate memory budget
+ok 71 - History prunes old transactions by approximate memory budget
+  ---
+  duration_ms: 0.359492
+  type: 'test'
+  ...
+# Subtest: Example orbit-study: document validates and compiles finite triangle data
+ok 72 - Example orbit-study: document validates and compiles finite triangle data
+  ---
+  duration_ms: 151.727243
+  type: 'test'
+  ...
+# Subtest: Example empty-scene: document validates and compiles finite triangle data
+ok 73 - Example empty-scene: document validates and compiles finite triangle data
+  ---
+  duration_ms: 9.221128
+  type: 'test'
+  ...
+# Subtest: Example glass-materials: document validates and compiles finite triangle data
+ok 74 - Example glass-materials: document validates and compiles finite triangle data
+  ---
+  duration_ms: 116.776801
+  type: 'test'
+  ...
+# Subtest: Example animated-orbit: document validates and compiles finite triangle data
+ok 75 - Example animated-orbit: document validates and compiles finite triangle data
+  ---
+  duration_ms: 68.174972
+  type: 'test'
+  ...
+# Subtest: Example modifier-workshop: document validates and compiles finite triangle data
+ok 76 - Example modifier-workshop: document validates and compiles finite triangle data
+  ---
+  duration_ms: 71.547337
+  type: 'test'
+  ...
+# Subtest: Example solid-uv-workshop: document validates and compiles finite triangle data
+ok 77 - Example solid-uv-workshop: document validates and compiles finite triangle data
+  ---
+  duration_ms: 4.119694
+  type: 'test'
+  ...
+# Subtest: Example deformation-lab: document validates and compiles finite triangle data
+ok 78 - Example deformation-lab: document validates and compiles finite triangle data
+  ---
+  duration_ms: 189.361863
+  type: 'test'
+  ...
+# Subtest: Example bitmap-node-materials: document validates and compiles finite triangle data
+ok 79 - Example bitmap-node-materials: document validates and compiles finite triangle data
+  ---
+  duration_ms: 11.045709
+  type: 'test'
+  ...
+# Subtest: Example volume-subsurface: document validates and compiles finite triangle data
+ok 80 - Example volume-subsurface: document validates and compiles finite triangle data
+  ---
+  duration_ms: 36.636039
+  type: 'test'
+  ...
+# Subtest: Example photon-caustics: document validates and compiles finite triangle data
+ok 81 - Example photon-caustics: document validates and compiles finite triangle data
+  ---
+  duration_ms: 18.342855
+  type: 'test'
+  ...
+# Subtest: Example motion-blur: document validates and compiles finite triangle data
+ok 82 - Example motion-blur: document validates and compiles finite triangle data
+  ---
+  duration_ms: 5.832952
+  type: 'test'
+  ...
+# Subtest: Boolean union: exact overlapping cube volume, closed topology, UVs
+ok 83 - Boolean union: exact overlapping cube volume, closed topology, UVs
+  ---
+  duration_ms: 8.115199
+  type: 'test'
+  ...
+# Subtest: Boolean subtract: exact overlapping cube volume, closed topology, UVs
+ok 84 - Boolean subtract: exact overlapping cube volume, closed topology, UVs
+  ---
+  duration_ms: 1.006738
+  type: 'test'
+  ...
+# Subtest: Boolean intersect: exact overlapping cube volume, closed topology, UVs
+ok 85 - Boolean intersect: exact overlapping cube volume, closed topology, UVs
+  ---
+  duration_ms: 1.175323
+  type: 'test'
+  ...
+# Subtest: Boolean randomized overlap x=0.17
+ok 86 - Boolean randomized overlap x=0.17
+  ---
+  duration_ms: 11.473684
+  type: 'test'
+  ...
+# Subtest: Boolean randomized overlap x=0.66
+ok 87 - Boolean randomized overlap x=0.66
+  ---
+  duration_ms: 11.223967
+  type: 'test'
+  ...
+# Subtest: Boolean randomized overlap x=1.23
+ok 88 - Boolean randomized overlap x=1.23
+  ---
+  duration_ms: 9.502742
+  type: 'test'
+  ...
+# Subtest: Boolean randomized overlap x=1.82
+ok 89 - Boolean randomized overlap x=1.82
+  ---
+  duration_ms: 6.240982
+  type: 'test'
+  ...
+# Subtest: Boolean coplanar and disjoint boundary cases
+ok 90 - Boolean coplanar and disjoint boundary cases
+  ---
+  duration_ms: 1.846685
+  type: 'test'
+  ...
+# Subtest: Boolean invalid open/nonmanifold input is explicitly rejected
+ok 91 - Boolean invalid open/nonmanifold input is explicitly rejected
+  ---
+  duration_ms: 0.754198
+  type: 'test'
+  ...
+# Subtest: Boolean material tags reach the renderer ABI
+ok 92 - Boolean material tags reach the renderer ABI
+  ---
+  duration_ms: 3.579228
+  type: 'test'
+  ...
+# Subtest: Bevel is a closed, smaller convex solid with real edge strips
+ok 93 - Bevel is a closed, smaller convex solid with real edge strips
+  ---
+  duration_ms: 1.904493
+  type: 'test'
+  ...
+# Subtest: Bevel rejects collapsed offsets and open input
+ok 94 - Bevel rejects collapsed offsets and open input
+  ---
+  duration_ms: 0.273593
+  type: 'test'
+  ...
+# Subtest: Conformal unwrap cuts six cube charts and packs within texture bounds
+ok 95 - Conformal unwrap cuts six cube charts and packs within texture bounds
+  ---
+  duration_ms: 2.325748
+  type: 'test'
+  ...
+# Subtest: Conformal unwrap requires seams on closed charts
+ok 96 - Conformal unwrap requires seams on closed charts
+  ---
+  duration_ms: 0.2384
+  type: 'test'
+  ...
+# Subtest: Explicit LSCM pins remain fixed without packing
+ok 97 - Explicit LSCM pins remain fixed without packing
+  ---
+  duration_ms: 0.375186
+  type: 'test'
+  ...
+# Subtest: UV packing preserves disjoint chart boxes and padding
+ok 98 - UV packing preserves disjoint chart boxes and padding
+  ---
+  duration_ms: 0.557431
+  type: 'test'
+  ...
+# Subtest: UV transform only edits the chosen island and does not mutate source
+ok 99 - UV transform only edits the chosen island and does not mutate source
+  ---
+  duration_ms: 1.046077
+  type: 'test'
+  ...
+# Subtest: UV stitch averages coincident seam positions
+ok 100 - UV stitch averages coincident seam positions
+  ---
+  duration_ms: 0.587957
+  type: 'test'
+  ...
+# Subtest: UV relaxation respects boundary/pinned values
+ok 101 - UV relaxation respects boundary/pinned values
+  ---
+  duration_ms: 0.660116
+  type: 'test'
+  ...
+# Subtest: linear skin bind pose and deformation
+ok 102 - linear skin bind pose and deformation
+  ---
+  duration_ms: 6.144276
+  type: 'test'
+  ...
+# Subtest: dualQuaternion skin bind pose and deformation
+ok 103 - dualQuaternion skin bind pose and deformation
+  ---
+  duration_ms: 4.702703
+  type: 'test'
+  ...
+# Subtest: Skin weight editor normalizes and rejects invalid bones
+ok 104 - Skin weight editor normalizes and rejects invalid bones
+  ---
+  duration_ms: 0.472663
+  type: 'test'
+  ...
+# Subtest: Dual quaternion mode rejects non-rigid scaling
+ok 105 - Dual quaternion mode rejects non-rigid scaling
+  ---
+  duration_ms: 0.4577
+  type: 'test'
+  ...
+# Subtest: Quaternion bone animation interpolates and retains exact endpoints
+ok 106 - Quaternion bone animation interpolates and retains exact endpoints
+  ---
+  duration_ms: 0.359002
+  type: 'test'
+  ...
+# Subtest: FABRIK reaches target and preserves lengths
+ok 107 - FABRIK reaches target and preserves lengths
+  ---
+  duration_ms: 0.260743
+  type: 'test'
+  ...
+# Subtest: FABRIK unreachable goal extends the chain without stretching
+ok 108 - FABRIK unreachable goal extends the chain without stretching
+  ---
+  duration_ms: 0.314574
+  type: 'test'
+  ...
+# Subtest: Rig IK changes bone rotations to place the end joint
+ok 109 - Rig IK changes bone rotations to place the end joint
+  ---
+  duration_ms: 1.520984
+  type: 'test'
+  ...
+# Subtest: glTF quaternion slerp and cubic spline tracks
+ok 110 - glTF quaternion slerp and cubic spline tracks
+  ---
+  duration_ms: 0.353894
+  type: 'test'
+  ...
+# Subtest: XPBD fixed pins, length preservation, and finite reset
+ok 111 - XPBD fixed pins, length preservation, and finite reset
+  ---
+  duration_ms: 5.219683
+  type: 'test'
+  ...
+# Subtest: XPBD cloth includes structural and shear constraints
+ok 112 - XPBD cloth includes structural and shear constraints
+  ---
+  duration_ms: 1.771322
+  type: 'test'
+  ...
+# Subtest: Rigid sphere collision conserves momentum in elastic free space
+ok 113 - Rigid sphere collision conserves momentum in elastic free space
+  ---
+  duration_ms: 0.674387
+  type: 'test'
+  ...
+# Subtest: Rigid proxy settles without penetrating the floor
+ok 114 - Rigid proxy settles without penetrating the floor
+  ---
+  duration_ms: 2.726041
+  type: 'test'
+  ...
+# Subtest: Simulation cache backwards seek is deterministic
+ok 115 - Simulation cache backwards seek is deterministic
+  ---
+  duration_ms: 1.621325
+  type: 'test'
+  ...
+# Subtest: Seeded hair roots lie on the source surface and outputs are deterministic
+ok 116 - Seeded hair roots lie on the source surface and outputs are deterministic
+  ---
+  duration_ms: 2.556706
+  type: 'test'
+  ...
+# Subtest: Hair dynamics preserve pinned roots
+ok 117 - Hair dynamics preserve pinned roots
+  ---
+  duration_ms: 1.707304
+  type: 'test'
+  ...
+# Subtest: Particle population is seeded, bounded, rendered as real meshes
+ok 118 - Particle population is seeded, bounded, rendered as real meshes
+  ---
+  duration_ms: 1.822058
+  type: 'test'
+  ...
+# Subtest: Procedural hair and particles are evaluated by the scene compiler
+ok 119 - Procedural hair and particles are evaluated by the scene compiler
+  ---
+  duration_ms: 6.727436
+  type: 'test'
+  ...
+# Subtest: Graph compilation is topological and rejects cycles
+ok 120 - Graph compilation is topological and rejects cycles
+  ---
+  duration_ms: 0.830112
+  type: 'test'
+  ...
+# Subtest: Graph CPU evaluation executes arithmetic and surface outputs
+ok 121 - Graph CPU evaluation executes arithmetic and surface outputs
+  ---
+  duration_ms: 0.49085
+  type: 'test'
+  ...
+# Subtest: Graph bitmap node samples the chosen layer
+ok 122 - Graph bitmap node samples the chosen layer
+  ---
+  duration_ms: 0.190808
+  type: 'test'
+  ...
+# Subtest: Graph and subsurface parameters match the 16-float material ABI
+ok 123 - Graph and subsurface parameters match the 16-float material ABI
+  ---
+  duration_ms: 0.39131
+  type: 'test'
+  ...
+# Subtest: Bitmap bilinear sampling wraps and interpolates in linear color space
+ok 124 - Bitmap bilinear sampling wraps and interpolates in linear color space
+  ---
+  duration_ms: 0.419783
+  type: 'test'
+  ...
+# Subtest: Texture mip chain averages linear light and retains alpha
+ok 125 - Texture mip chain averages linear light and retains alpha
+  ---
+  duration_ms: 18.57151
+  type: 'test'
+  ...
+# Subtest: EXR round trip preserves unclamped floats and uint IDs
+ok 126 - EXR round trip preserves unclamped floats and uint IDs
+  ---
+  duration_ms: 1.318168
+  type: 'test'
+  ...
+# Subtest: EXR validates input and rejects truncation/nonfinite samples
+ok 127 - EXR validates input and rejects truncation/nonfinite samples
+  ---
+  duration_ms: 0.306893
+  type: 'test'
+  ...
+# Subtest: Simultaneous AOVs map to correct EXR channel offsets
+ok 128 - Simultaneous AOVs map to correct EXR channel offsets
+  ---
+  duration_ms: 0.558562
+  type: 'test'
+  ...
+# Subtest: PNG encoder emits standard signature and base64 is lossless
+ok 129 - PNG encoder emits standard signature and base64 is lossless
+  ---
+  duration_ms: 0.420104
+  type: 'test'
+  ...
+# Subtest: GLB demo round trip retains hierarchy, topology and materials
+ok 130 - GLB demo round trip retains hierarchy, topology and materials
+  ---
+  duration_ms: 189.825227
+  type: 'test'
+  ...
+# Subtest: glTF skin round trip preserves bind and posed world geometry
+ok 131 - glTF skin round trip preserves bind and posed world geometry
+  ---
+  duration_ms: 4.426066
+  type: 'test'
+  ...
+# Subtest: glTF morphs are not applied twice during export/import
+ok 132 - glTF morphs are not applied twice during export/import
+  ---
+  duration_ms: 1.9228
+  type: 'test'
+  ...
+# Subtest: glTF exports object Euler animation and imports usable tracks
+ok 133 - glTF exports object Euler animation and imports usable tracks
+  ---
+  duration_ms: 4.229549
+  type: 'test'
+  ...
+# Subtest: glTF accessor honors stride and integer normalization
+ok 134 - glTF accessor honors stride and integer normalization
+  ---
+  duration_ms: 0.210117
+  type: 'test'
+  ...
+# Subtest: glTF sparse accessor patches its implicit zero base
+ok 135 - glTF sparse accessor patches its implicit zero base
+  ---
+  duration_ms: 0.273623
+  type: 'test'
+  ...
+# Subtest: glTF invalid required extension and truncated buffers fail explicitly
+ok 136 - glTF invalid required extension and truncated buffers fail explicitly
+  ---
+  duration_ms: 0.431611
+  type: 'test'
+  ...
+# Subtest: glTF TRS decomposition preserves signed scales and rejects shear
+ok 137 - glTF TRS decomposition preserves signed scales and rejects shear
+  ---
+  duration_ms: 0.360474
+  type: 'test'
+  ...
+# Subtest: PLY and USDA snapshots contain transformed mesh geometry
+ok 138 - PLY and USDA snapshots contain transformed mesh geometry
+  ---
+  duration_ms: 1.156704
+  type: 'test'
+  ...
+# Subtest: Production shutter times are stratified and temporal geometry follows keys
+ok 139 - Production shutter times are stratified and temporal geometry follows keys
+  ---
+  duration_ms: 0.322026
+  type: 'test'
+  ...
+# Subtest: Production camera shutter evaluates keyed camera motion
+ok 140 - Production camera shutter evaluates keyed camera motion
+  ---
+  duration_ms: 0.274634
+  type: 'test'
+  ...
+# Subtest: Distributed tiles and sample ranges cover the requested job exactly
+ok 141 - Distributed tiles and sample ranges cover the requested job exactly
+  ---
+  duration_ms: 2.818902
+  type: 'test'
+  ...
+# Subtest: Distributed weighted merge, ID semantics and duplicate idempotence
+ok 142 - Distributed weighted merge, ID semantics and duplicate idempotence
+  ---
+  duration_ms: 0.624201
+  type: 'test'
+  ...
+# Subtest: Distributed leases expire, retry and reject stale workers
+ok 143 - Distributed leases expire, retry and reject stale workers
+  ---
+  duration_ms: 0.447304
+  type: 'test'
+  ...
+# Subtest: Distributed heartbeats extend leases and bad data cannot partially merge
+ok 144 - Distributed heartbeats extend leases and bad data cannot partially merge
+  ---
+  duration_ms: 0.427284
+  type: 'test'
+  ...
+# Subtest: Distributed memory budgets and cancellation free/retain resources explicitly
+ok 145 - Distributed memory budgets and cancellation free/retain resources explicitly
+  ---
+  duration_ms: 0.356057
+  type: 'test'
+  ...
+# Subtest: Fractional cloth shutter sampling is noninteger and does not mutate cached frames
+ok 146 - Fractional cloth shutter sampling is noninteger and does not mutate cached frames
+  ---
+  duration_ms: 20.595993
+  type: 'test'
+  ...
+# Subtest: Fractional rigid sampling preserves the integer checkpoint and angular state
+ok 147 - Fractional rigid sampling preserves the integer checkpoint and angular state
+  ---
+  duration_ms: 0.940959
+  type: 'test'
+  ...
+# Subtest: Baked deformation interpolates real vertex positions between frames
+ok 148 - Baked deformation interpolates real vertex positions between frames
+  ---
+  duration_ms: 0.57014
+  type: 'test'
+  ...
+# Subtest: A single conformal pin is retained while adding a second gauge anchor
+ok 149 - A single conformal pin is retained while adding a second gauge anchor
+  ---
+  duration_ms: 1.118257
+  type: 'test'
+  ...
+# Subtest: glTF preserves hard cube normals by remapping vertices
+ok 150 - glTF preserves hard cube normals by remapping vertices
+  ---
+  duration_ms: 0.729831
+  type: 'test'
+  ...
+# Subtest: glTF multi-material boolean export uses separate material primitives
+ok 151 - glTF multi-material boolean export uses separate material primitives
+  ---
+  duration_ms: 4.329019
+  type: 'test'
+  ...
+# Subtest: Empty GLB exports no invalid zero-byte buffers or mesh arrays
+ok 152 - Empty GLB exports no invalid zero-byte buffers or mesh arrays
+  ---
+  duration_ms: 0.547586
+  type: 'test'
+  ...
+# Subtest: glTF rejects skin topology changes and unbaked morph modifiers
+ok 153 - glTF rejects skin topology changes and unbaked morph modifiers
+  ---
+  duration_ms: 1.529246
+  type: 'test'
+  ...
+# Subtest: PLY snapshot respects inherited visibility and reversed transforms
+ok 154 - PLY snapshot respects inherited visibility and reversed transforms
+  ---
+  duration_ms: 0.574987
+  type: 'test'
+  ...
+# Subtest: Malformed extra PLY vertex values and unsupported element ordering reject
+ok 155 - Malformed extra PLY vertex values and unsupported element ordering reject
+  ---
+  duration_ms: 0.414074
+  type: 'test'
+  ...
+# Subtest: Mesh validation rejects inconsistent authored normals/material counts
+ok 156 - Mesh validation rejects inconsistent authored normals/material counts
+  ---
+  duration_ms: 0.199701
+  type: 'test'
+  ...
+# Subtest: UV longitudinal seam splits vertex sectors inside one cylinder chart
+ok 157 - UV longitudinal seam splits vertex sectors inside one cylinder chart
+  ---
+  duration_ms: 9.556474
+  type: 'test'
+  ...
+# Subtest: Automatic dual-tree seams open a smooth closed surface for LSCM
+ok 158 - Automatic dual-tree seams open a smooth closed surface for LSCM
+  ---
+  duration_ms: 57.819553
+  type: 'test'
+  ...
+# Subtest: Seam splitting preserves material slots and authored normals
+ok 159 - Seam splitting preserves material slots and authored normals
+  ---
+  duration_ms: 1.703149
+  type: 'test'
+  ...
+1..159
+# tests 159
+# suites 0
+# pass 159
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1656.96915

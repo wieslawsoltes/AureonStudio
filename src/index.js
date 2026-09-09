@@ -1,0 +1,25 @@
+/** Public library entry point. Loading this module does not start the editor. */
+export * as Math3D from './core/math.js';
+export * as Geometry from './geometry/mesh.js';
+export * as Primitives from './geometry/primitives.js';
+export * as Modifiers from './geometry/modifiers.js';
+export * as Scene from './scene/document.js';
+export * as FileFormats from './io/formats.js';
+export { History } from './core/history.js';
+export { Renderer as AureonRayRenderer } from './render/renderer.js';
+export { compileTriangles, compileMaterials } from './render/compile.js';
+export { buildBVH, refitBVH, intersectBVH } from './render/bvh.js';
+export { cameraRay, cameraFrame, project } from './render/camera.js';
+export * as SolidModeling from './geometry/boolean.js';
+export { bevelMesh } from './geometry/bevel.js';
+export * as UV from './geometry/uv.js';
+export * as Rigging from './animation/rig.js';
+export * as Tracks from './animation/tracks.js';
+export * as Physics from './simulation/physics.js';
+export * as Curves from './simulation/curves.js';
+export * as ShaderGraph from './materials/graph.js';
+export * as Textures from './materials/textures.js';
+export * as OpenEXR from './io/exr.js';
+export * as GLTF2 from './io/gltf.js';
+export * as Interchange from './io/interchange.js';
+export { renderProduction, renderTile, temporalDocument, shutterTime } from './render/production.js';

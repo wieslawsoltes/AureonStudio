@@ -1,0 +1,42 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><title>Aureon v0.2 GPU regression suite</title>
+<style>body{background:#17191e;color:#e4e8f0;font:14px system-ui;margin:24px}canvas{width:256px;height:192px}pre{white-space:pre-wrap}</style>
+<h1>Aureon v0.2 · real WebGPU regression suite</h1><p>This page requires a working WebGPU adapter. It never substitutes a CPU renderer.</p><canvas></canvas><pre id="log">Initializing…</pre>
+<script type="module">
+import {Renderer} from '../src/render/renderer.js';
+import {emptyDocument,newObject,GeometryCache} from '../src/scene/document.js';
+import {compileTriangles} from '../src/render/compile.js';
+import {buildBVH} from '../src/render/bvh.js';
+import {renderProduction,renderTile} from '../src/render/production.js';
+import {checkerGraph} from '../src/materials/graph.js';
+const log=document.querySelector('#log'),report=window.report={release:'0.2.0',status:'running',checks:[],errors:[]};
+const check=(name,condition=true,details)=>{if(!condition)throw Error(name);report.checks.push({name,passed:true,details});log.textContent=JSON.stringify(report,null,2);};
+const finite=x=>Array.from(x).every(Number.isFinite),maximum=x=>Array.from(x).reduce((a,b)=>Math.max(a,b),-Infinity);
+function scene(){const d=emptyDocument();d.camera.target=[0,1,0];d.camera.distance=6;d.settings={...d.settings,samples:8,bounces:8,resolution:1,seed:137,integrator:'path'};
+ const add=(type,params,name,position,material=0,rotation=[0,0,0])=>{const o=newObject(type,params,name);Object.assign(o,{position,material,rotation});d.objects.push(o);return o;};
+ add('plane',{width:8,depth:8},'Floor',[0,0,0]);add('box',{width:1.3,height:1.7,depth:1.3},'Object',[0,.85,0],4);
+ add('plane',{width:8,depth:6},'Back wall',[0,3,-3],0,[90,0,0]);add('plane',{width:8,depth:6},'Side wall',[-3,3,0],0,[90,90,0]);
+ add('plane',{width:2,depth:2},'Light',[0,4,0],7,[180,0,0]);return d;}
+let renderer;
+try{
+ renderer=window.renderer=await new Renderer(document.querySelector('canvas'),(message,type)=>{if(type==='error')report.errors.push(message);}).init();
+ renderer.device.addEventListener('uncapturederror',e=>report.errors.push(e.error.message));
+ report.adapter={vendor:renderer.info.vendor,architecture:renderer.info.architecture,description:renderer.info.description};
+ check('All raster, path, photon, display and denoise pipelines compile');
+ let doc=scene();const frame=await renderProduction(renderer,doc,{width:32,height:24,samples:8});
+ check('Path tracing produces finite nonzero HDR',finite(frame.hdr.data)&&maximum(frame.hdr.data)>0);check('All 20 AOV floats per pixel are finite',frame.aovs.data.length===32*24*20&&finite(frame.aovs.data));
+ let residual=0;for(let i=0;i<32*24;i++)for(let k=0;k<3;k++)residual=Math.max(residual,Math.abs(frame.hdr.data[i*4+k]-frame.aovs.data[i*20+12+k]-frame.aovs.data[i*20+16+k]));check('Beauty equals direct + indirect AOVs',residual<1e-4,{maximumResidual:residual});
+ doc.settings.denoise=true;await renderer.render(doc);const filtered=await renderer.readHDR({denoised:true}),raw=await renderer.readHDR();check('Denoising is finite and preserves raw accumulation',finite(filtered.data)&&raw.data.every((v,i)=>v===frame.hdr.data[i]));
+ doc=scene();doc.textures=[{name:'Test bitmap',width:2,height:2,data:[255,0,0,255,0,255,0,255,0,0,255,255,255,255,255,255]}];doc.materials[4].graph=checkerGraph();doc.materials[0].bitmap=0;
+ const materialFrame=await renderProduction(renderer,doc,{width:24,height:16,samples:4});check('Bitmap array and node graph execute',finite(materialFrame.hdr.data));renderer.mode='raster';await renderer.render(doc);check('Raster graph/material rendering executes');
+ doc=scene();doc.volume={min:[-2,0,-2],max:[2,3,2],color:[.9,.95,1],density:.15,anisotropy:.3};doc.materials[4].subsurface={weight:.8,density:3,anisotropy:.2};
+ const media=await renderProduction(renderer,doc,{width:24,height:16,samples:4});check('World volume and interior random walks execute',finite(media.hdr.data));
+ doc=scene();doc.settings.integrator='photon';doc.settings.photonCount=2048;doc.settings.photonRadius=.5;await renderProduction(renderer,doc,{width:24,height:16,samples:2});const photons=await renderer.photonStatistics();check('Photon dispatch stores indirect surface photons',photons.stored>0,photons);
+ doc.settings.integrator='finalGather';const gathered=await renderProduction(renderer,doc,{width:24,height:16,samples:2});check('Final gathering executes with finite HDR',finite(gathered.hdr.data));
+ doc=scene();const full=await renderProduction(renderer,doc,{width:32,height:24,samples:4});let difference=0;
+ for(const x of [0,16]){const tile=await renderTile(renderer,doc,{x,y:0,width:16,height:24,fullWidth:32,fullHeight:24,sampleStart:0,samples:4,totalSamples:4});for(let y=0;y<24;y++)for(let tx=0;tx<16;tx++)for(let c=0;c<3;c++)difference=Math.max(difference,Math.abs(tile[(y*16+tx)*24+c]-full.hdr.data[(y*32+x+tx)*4+c]));}
+ check('Non-square tiles reproduce full-frame pixel rays and RNG',difference<1e-4,{maximumDifference:difference});
+ doc=scene();const o=doc.objects[1];o.keys=[{frame:0,position:[-1,.85,0],rotation:[0,0,0],scale:[1,1,1]},{frame:2,position:[1,.85,0],rotation:[0,0,0],scale:[1,1,1]}];doc.animation.frame=1;doc.animation.interpolation='linear';
+ const motion=await renderProduction(renderer,doc,{width:24,height:16,samples:4,shutter:[-.5,.5]});check('Temporal geometry integration produces finite HDR',finite(motion.hdr.data));
+ await renderer.device.queue.onSubmittedWorkDone();check('No uncaptured WebGPU or JavaScript errors',report.errors.length===0);report.status='passed';
+}catch(e){report.status='failed';report.failure=e.stack||e.message;console.error(e);}finally{window.done=true;log.textContent=JSON.stringify(report,null,2);}
+</script></html>

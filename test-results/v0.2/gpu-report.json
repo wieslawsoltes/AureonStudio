@@ -1,0 +1,6 @@
+{
+  "release": "0.2.0",
+  "status": "blocked",
+  "checks": [],
+  "reason": "Page.goto: net::ERR_BLOCKED_BY_ADMINISTRATOR at http://localhost:4173/tests/production-gpu.html\nCall log:\n  - navigating to \"http://localhost:4173/tests/production-gpu.html\", waiting until \"load\"\n"
+}

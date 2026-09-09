@@ -1,0 +1,23 @@
+{
+  "name": "aureon-studio",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "Modular browser DCC studio, geometry/deformation tools and WebGPU light transport.",
+  "scripts": {
+    "start": "node scripts/serve.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "test:browser": "python3 tests/browser.py",
+    "bench": "node scripts/benchmark.mjs",
+    "examples": "node scripts/generate-examples.mjs",
+    "render:server": "node scripts/render-server.mjs",
+    "test:offline-ui": "python3 tests/offline-ui.py",
+    "test:production-gpu": "python3 tests/production-gpu.py",
+    "test:codecs": "node tests/codec-fixtures.mjs && python3 tests/independent-codecs.py",
+    "build:pages": "node scripts/build-pages.mjs"
+  },
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  }
+}

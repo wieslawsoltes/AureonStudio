@@ -1,0 +1,194 @@
+{
+  "started": "2026-09-08T21:41:00Z",
+  "softwareAdapterRequested": true,
+  "checks": [
+    {
+      "name": "Native WebGPU initialization and all WGSL pipelines",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Demo compiles and renders 8,138 real triangles",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Primitive creation through the UI",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Inspector transform edits reach the compiled scene",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Transform edit uses BVH refitting",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Undo restores the canonical transform",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Redo restores the edited transform",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Two modifiers evaluate without mutating primitive parameters",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Modifier reordering changes the actual stack",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Collapse bakes evaluated polygon geometry",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Viewport ray picking selects a real polygon",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Polygon extrusion creates connected side faces",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Polygon inset adds an actual face ring",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "UV editor applies projected and edited mesh coordinates",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Material library assignment and procedural pattern edits",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Interactive gizmo commits a real object transform",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Gizmo drag is one undoable transaction",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Timeline evaluates transform keys",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Curve editor displays the actual animation channels",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Timeline playback changes frame",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Scene JSON preserves geometry, modifiers, materials and keys",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Native scene input restores saved state",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "OBJ import decodes a real polygon through the UI",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "IndexedDB recovery persists a validated local document",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Compute path tracing, glass, depth of field and HDR readback",
+      "passed": true,
+      "details": {
+        "width": 262,
+        "height": 143,
+        "finite": true,
+        "mean": 0.28156041954555955,
+        "max": 7.088051795959473,
+        "positive": 112398,
+        "samples": 12
+      }
+    },
+    {
+      "name": "PNG export produces an actual image file",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "PNG contains rendered pixels, not a black presentation surface",
+      "passed": true,
+      "details": {
+        "mean": 155.51153935123347,
+        "range": 253.33333333333331
+      }
+    },
+    {
+      "name": "PFM export preserves float32 linear radiance",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Camera edits invalidate accumulated radiance",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Empty scene and zero mesh lights render safely",
+      "passed": true,
+      "details": null
+    },
+    {
+      "name": "Zero uncaptured GPU validation errors",
+      "passed": true,
+      "details": []
+    },
+    {
+      "name": "Zero uncaught browser exceptions",
+      "passed": true,
+      "details": []
+    }
+  ],
+  "errors": [],
+  "browserVersion": "144.0.7559.96",
+  "adapter": {
+    "vendor": "google",
+    "architecture": "swiftshader",
+    "description": ""
+  },
+  "render": {
+    "width": 262,
+    "height": 143,
+    "finite": true,
+    "mean": 0.28156041954555955,
+    "max": 7.088051795959473,
+    "positive": 112398,
+    "samples": 12
+  },
+  "passed": true
+}

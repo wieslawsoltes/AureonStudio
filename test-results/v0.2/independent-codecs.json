@@ -1,0 +1,9 @@
+{
+  "status": "passed",
+  "checks": [
+    "OpenCV independently decodes unclamped RGB FLOAT EXR",
+    "Pillow independently decodes exact RGBA PNG"
+  ],
+  "scope": "EXR UINT/AOV channels tested by the project reader, not OpenCV. This test does not exercise GPU rendering.",
+  "opencv": "4.13.0"
+}

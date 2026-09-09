@@ -1,0 +1,8 @@
+/** Dependency-free lossless RGBA8 PNG encoder using DEFLATE stored blocks. */
+const u32=v=>Uint8Array.of(v>>>24,(v>>>16)&255,(v>>>8)&255,v&255);
+function crc32(data){let c=0xffffffff;for(const v of data){c^=v;for(let k=0;k<8;k++)c=(c>>>1)^((c&1)?0xedb88320:0);}return(c^0xffffffff)>>>0;}
+function concat(parts){const out=new Uint8Array(parts.reduce((s,p)=>s+p.length,0));let o=0;for(const p of parts){out.set(p,o);o+=p.length;}return out;}
+function chunk(type,data){const t=new TextEncoder().encode(type),body=concat([t,data]);return concat([u32(data.length),body,u32(crc32(body))]);}
+export function encodePNG(width,height,rgba){if(!Number.isInteger(width)||!Number.isInteger(height)||width<1||height<1||rgba.length!==width*height*4)throw Error('Invalid PNG dimensions');const raw=new Uint8Array((width*4+1)*height);for(let y=0;y<height;y++)raw.set(rgba.subarray?rgba.subarray(y*width*4,(y+1)*width*4):rgba.slice(y*width*4,(y+1)*width*4),y*(width*4+1)+1);const blocks=[Uint8Array.of(0x78,0x01)];for(let p=0;p<raw.length;p+=65535){const n=Math.min(65535,raw.length-p);blocks.push(Uint8Array.of(+(p+n===raw.length),n&255,n>>>8,(~n)&255,((~n)>>>8)&255),raw.subarray(p,p+n));}let a=1,b=0;for(const v of raw){a=(a+v)%65521;b=(b+a)%65521;}blocks.push(u32((b<<16)|a));const ihdr=concat([u32(width),u32(height),Uint8Array.of(8,6,0,0,0)]);return concat([Uint8Array.of(137,80,78,71,13,10,26,10),chunk('IHDR',ihdr),chunk('sRGB',Uint8Array.of(0)),chunk('IDAT',concat(blocks)),chunk('IEND',new Uint8Array())]);}
+export function bytesBase64(bytes){let s='';for(let i=0;i<bytes.length;i+=16384)s+=String.fromCharCode(...bytes.subarray(i,i+16384));return btoa(s);}
+export function base64Bytes(base64){const s=atob(base64);return Uint8Array.from(s,c=>c.charCodeAt(0));}

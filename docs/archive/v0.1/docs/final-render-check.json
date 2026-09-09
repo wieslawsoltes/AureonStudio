@@ -1,0 +1,22 @@
+{
+  "width": 523,
+  "height": 287,
+  "samples": 64,
+  "finite": true,
+  "max": 8.826797485351562,
+  "mean": 0.28175860265692865,
+  "validationErrors": [],
+  "wallSecondsForThisSoftwareAdapterCapture": 129.1849489289998,
+  "browserErrors": [],
+  "adapter": {
+    "vendor": "google",
+    "architecture": "swiftshader",
+    "kind": "software WebGPU"
+  },
+  "browserVersion": "144.0.7559.96",
+  "standaloneSmokeCheck": {
+    "passed": true,
+    "observedStatus": "1 / 256 samples \u00b7 480 \u00d7 313",
+    "scope": "Initialization and first completed sample, not convergence or all 256 samples"
+  }
+}

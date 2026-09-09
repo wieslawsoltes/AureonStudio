@@ -1,0 +1,386 @@
+{
+  "format": "aureon-studio",
+  "version": 1,
+  "name": "Bitmap and node-based shading",
+  "objects": [
+    {
+      "id": "amtt9bhle39",
+      "name": "Ground",
+      "type": "plane",
+      "params": {
+        "width": 30,
+        "depth": 30,
+        "segments": 1
+      },
+      "mesh": null,
+      "parent": null,
+      "visible": true,
+      "locked": false,
+      "material": 0,
+      "position": [
+        0,
+        -0.02,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "modifiers": [],
+      "keys": []
+    },
+    {
+      "id": "amtt9bhle3a",
+      "name": "Area light",
+      "type": "plane",
+      "params": {
+        "width": 5,
+        "depth": 5,
+        "segments": 1
+      },
+      "mesh": null,
+      "parent": null,
+      "visible": true,
+      "locked": false,
+      "material": 7,
+      "position": [
+        -2,
+        6,
+        3
+      ],
+      "rotation": [
+        155,
+        0,
+        -15
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "modifiers": [],
+      "keys": [],
+      "hiddenInViewport": true,
+      "cameraVisible": false
+    },
+    {
+      "id": "amtt9bhle3b",
+      "name": "Shader graph sphere",
+      "type": "sphere",
+      "params": {
+        "radius": 0.9,
+        "segments": 24,
+        "rings": 16
+      },
+      "mesh": null,
+      "parent": null,
+      "visible": true,
+      "locked": false,
+      "material": 4,
+      "position": [
+        -1.25,
+        1,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "modifiers": [],
+      "keys": []
+    },
+    {
+      "id": "amtt9bhle3c",
+      "name": "Bitmap cube",
+      "type": "box",
+      "params": {
+        "width": 1.6,
+        "height": 1.6,
+        "depth": 1.6
+      },
+      "mesh": null,
+      "parent": null,
+      "visible": true,
+      "locked": false,
+      "material": 0,
+      "position": [
+        1.2,
+        0.8,
+        0
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "modifiers": [],
+      "keys": []
+    }
+  ],
+  "materials": [
+    {
+      "id": "amtt9bhle31",
+      "name": "Porcelain",
+      "color": "#deddd9",
+      "roughness": 0.35,
+      "metallic": 0,
+      "transmission": 0,
+      "ior": 1.5,
+      "emission": 0,
+      "pattern": "solid",
+      "patternScale": 3,
+      "bitmap": 0
+    },
+    {
+      "id": "amtt9bhle32",
+      "name": "Brushed titanium",
+      "color": "#aebbc9",
+      "roughness": 0.24,
+      "metallic": 1,
+      "transmission": 0,
+      "ior": 1.5,
+      "emission": 0,
+      "pattern": "solid",
+      "patternScale": 3
+    },
+    {
+      "id": "amtt9bhle33",
+      "name": "Burnished copper",
+      "color": "#d9956e",
+      "roughness": 0.19,
+      "metallic": 1,
+      "transmission": 0,
+      "ior": 1.5,
+      "emission": 0,
+      "pattern": "solid",
+      "patternScale": 3
+    },
+    {
+      "id": "amtt9bhle34",
+      "name": "Obsidian",
+      "color": "#292d36",
+      "roughness": 0.25,
+      "metallic": 0.25,
+      "transmission": 0,
+      "ior": 1.5,
+      "emission": 0,
+      "pattern": "solid",
+      "patternScale": 3
+    },
+    {
+      "id": "amtt9bhle35",
+      "name": "Cobalt ceramic",
+      "color": "#315d91",
+      "roughness": 0.22,
+      "metallic": 0,
+      "transmission": 0,
+      "ior": 1.5,
+      "emission": 0,
+      "pattern": "solid",
+      "patternScale": 3,
+      "graph": {
+        "nodes": [
+          {
+            "id": "uv",
+            "type": "uv"
+          },
+          {
+            "id": "warm",
+            "type": "constant",
+            "value": [
+              0.58,
+              0.18,
+              0.05,
+              1
+            ]
+          },
+          {
+            "id": "cool",
+            "type": "constant",
+            "value": [
+              0.02,
+              0.18,
+              0.32,
+              1
+            ]
+          },
+          {
+            "id": "check",
+            "type": "checker",
+            "inputs": {
+              "uv": "uv",
+              "a": "warm",
+              "b": "cool"
+            },
+            "scale": 8
+          },
+          {
+            "id": "rough",
+            "type": "constant",
+            "value": 0.26
+          }
+        ],
+        "outputs": {
+          "baseColor": "check",
+          "roughness": "rough"
+        }
+      }
+    },
+    {
+      "id": "amtt9bhle36",
+      "name": "Sage lacquer",
+      "color": "#778c78",
+      "roughness": 0.28,
+      "metallic": 0,
+      "transmission": 0,
+      "ior": 1.5,
+      "emission": 0,
+      "pattern": "solid",
+      "patternScale": 3
+    },
+    {
+      "id": "amtt9bhle37",
+      "name": "Optical glass",
+      "color": "#fafbff",
+      "roughness": 0,
+      "metallic": 0,
+      "transmission": 1,
+      "ior": 1.5,
+      "emission": 0,
+      "pattern": "solid",
+      "patternScale": 3
+    },
+    {
+      "id": "amtt9bhle38",
+      "name": "Softbox",
+      "color": "#ffffff",
+      "roughness": 0.35,
+      "metallic": 0,
+      "transmission": 0,
+      "ior": 1.5,
+      "emission": 12,
+      "pattern": "solid",
+      "patternScale": 3
+    }
+  ],
+  "camera": {
+    "target": [
+      0,
+      1.3,
+      0
+    ],
+    "yaw": 0.56,
+    "pitch": 0.4,
+    "distance": 10,
+    "fov": 42,
+    "projection": "perspective",
+    "aperture": 0,
+    "focus": 8.5
+  },
+  "settings": {
+    "samples": 256,
+    "bounces": 12,
+    "exposure": 0.2,
+    "environment": 0.5,
+    "resolution": 0.75,
+    "view": "beauty",
+    "textureResolution": 256
+  },
+  "animation": {
+    "start": 0,
+    "end": 120,
+    "fps": 24,
+    "frame": 0,
+    "interpolation": "smooth"
+  },
+  "textures": [
+    {
+      "name": "RGBA tiles",
+      "width": 4,
+      "height": 4,
+      "data": [
+        40,
+        100,
+        180,
+        255,
+        210,
+        150,
+        65,
+        255,
+        40,
+        100,
+        180,
+        255,
+        210,
+        150,
+        65,
+        255,
+        40,
+        100,
+        180,
+        255,
+        210,
+        150,
+        65,
+        255,
+        40,
+        100,
+        180,
+        255,
+        210,
+        150,
+        65,
+        255,
+        40,
+        100,
+        180,
+        255,
+        210,
+        150,
+        65,
+        255,
+        40,
+        100,
+        180,
+        255,
+        210,
+        150,
+        65,
+        255,
+        40,
+        100,
+        180,
+        255,
+        210,
+        150,
+        65,
+        255,
+        40,
+        100,
+        180,
+        255,
+        210,
+        150,
+        65,
+        255
+      ]
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "kind": "offline DOM only; no WebGPU available",
+  "checks": [
+    "Actual editor starts without substituting a fake GPU",
+    "Production render and coordinator commands installed",
+    "Actual box creation and CPU worker scene build",
+    "Bind rig through dialog",
+    "Edit keyed rig pose through dialog",
+    "Graph nodes are real connected DOM cards",
+    "Graph applied to shared material",
+    "Media dialog writes canonical shader parameters",
+    "Denoise/AOV settings apply",
+    "Conformal UV editor writes six real islands",
+    "Hair UI feeds real curve geometry",
+    "Particle UI feeds animated mesh geometry",
+    "Rigid simulation settings apply",
+    "Cloth pins and solver apply",
+    "Simulation bake saves actual frame positions",
+    "Interchange workspace exposes import/export actions",
+    "Coordinator workspace exposes actual submit/worker actions",
+    "Boolean dialog creates evaluated result and hides operands",
+    "No uncaught JS exceptions during offline workflows"
+  ],
+  "errors": []
+}

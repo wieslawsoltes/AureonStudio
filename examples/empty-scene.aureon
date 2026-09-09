@@ -1,0 +1,133 @@
+{
+  "format": "aureon-studio",
+  "version": 1,
+  "name": "Untitled scene",
+  "objects": [],
+  "materials": [
+    {
+      "id": "amtt9bhkck",
+      "name": "Porcelain",
+      "color": "#deddd9",
+      "roughness": 0.35,
+      "metallic": 0,
+      "transmission": 0,
+      "ior": 1.5,
+      "emission": 0,
+      "pattern": "solid",
+      "patternScale": 3
+    },
+    {
+      "id": "amtt9bhkcl",
+      "name": "Brushed titanium",
+      "color": "#aebbc9",
+      "roughness": 0.24,
+      "metallic": 1,
+      "transmission": 0,
+      "ior": 1.5,
+      "emission": 0,
+      "pattern": "solid",
+      "patternScale": 3
+    },
+    {
+      "id": "amtt9bhkcm",
+      "name": "Burnished copper",
+      "color": "#d9956e",
+      "roughness": 0.19,
+      "metallic": 1,
+      "transmission": 0,
+      "ior": 1.5,
+      "emission": 0,
+      "pattern": "solid",
+      "patternScale": 3
+    },
+    {
+      "id": "amtt9bhkcn",
+      "name": "Obsidian",
+      "color": "#292d36",
+      "roughness": 0.25,
+      "metallic": 0.25,
+      "transmission": 0,
+      "ior": 1.5,
+      "emission": 0,
+      "pattern": "solid",
+      "patternScale": 3
+    },
+    {
+      "id": "amtt9bhkco",
+      "name": "Cobalt ceramic",
+      "color": "#315d91",
+      "roughness": 0.22,
+      "metallic": 0,
+      "transmission": 0,
+      "ior": 1.5,
+      "emission": 0,
+      "pattern": "solid",
+      "patternScale": 3
+    },
+    {
+      "id": "amtt9bhkcp",
+      "name": "Sage lacquer",
+      "color": "#778c78",
+      "roughness": 0.28,
+      "metallic": 0,
+      "transmission": 0,
+      "ior": 1.5,
+      "emission": 0,
+      "pattern": "solid",
+      "patternScale": 3
+    },
+    {
+      "id": "amtt9bhkcq",
+      "name": "Optical glass",
+      "color": "#fafbff",
+      "roughness": 0,
+      "metallic": 0,
+      "transmission": 1,
+      "ior": 1.5,
+      "emission": 0,
+      "pattern": "solid",
+      "patternScale": 3
+    },
+    {
+      "id": "amtt9bhkcr",
+      "name": "Softbox",
+      "color": "#ffffff",
+      "roughness": 0.35,
+      "metallic": 0,
+      "transmission": 0,
+      "ior": 1.5,
+      "emission": 12,
+      "pattern": "solid",
+      "patternScale": 3
+    }
+  ],
+  "camera": {
+    "target": [
+      0,
+      1.3,
+      0
+    ],
+    "yaw": 0.56,
+    "pitch": 0.4,
+    "distance": 8.5,
+    "fov": 42,
+    "projection": "perspective",
+    "aperture": 0,
+    "focus": 8.5
+  },
+  "settings": {
+    "samples": 128,
+    "bounces": 6,
+    "exposure": 0.2,
+    "environment": 0.5,
+    "resolution": 0.75,
+    "view": "beauty"
+  },
+  "animation": {
+    "start": 0,
+    "end": 120,
+    "fps": 24,
+    "frame": 0,
+    "interpolation": "smooth"
+  }
+}
