@@ -1,0 +1,42 @@
+name: Apply verified UDIM compiler optimization
+on:
+  push:
+    branches: [feat/production-systems-v03]
+    paths: [.github/workflows/optimize-textures.yml]
+permissions:
+  contents: write
+  actions: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feat/production-systems-v03
+      - name: Apply source-verified constant-time tile lookup
+        run: |
+          python3 - <<'PY'
+          import pathlib,hashlib
+          changes={
+          'src/render/common.wgsl':('db48e774fe5a57c451e1a1e6be05671909039e029979ebbe1cb1b6ea3072d391',
+          ' for(var i=0u;i<u32(desc.op.z);i++){let t=graphCode[u32(desc.op.w)+i].op;if(all(vec2i(t.xy)==tile)){return textureLoad(bitmapArray,pixel-tile*dims,i32(t.z),level);}}\n return desc.value;',
+          ' let address=u32(tile.y*10+tile.x);if(address>=u32(desc.op.z)){return desc.value;}\n let layer=i32(assetScalar(u32(desc.op.w)+address))-1;if(layer<0){return desc.value;}\n return textureLoad(bitmapArray,pixel-tile*dims,layer,level);'),
+          'src/render/assets.js':('d5a3f00e4e18d75f4e1c3f1582ad2fbc4b38eedcef9da4983c0d19ce91238969',
+          'if(d.tiles.length){const table=new Float32Array(d.tiles.length*16);d.tiles.forEach((t,j)=>table.set([t.u,t.v,t.layer,0],j*16));actualTextureRecords[record+3]=append(table)/16;}',
+          'if(d.tiles.length){const count=Math.max(...d.tiles.map(t=>t.v*10+t.u))+1,table=new Float32Array(count);for(const t of d.tiles)table[t.v*10+t.u]=t.layer+1;actualTextureRecords[record+2]=count;actualTextureRecords[record+3]=append(table);}')}
+          for name,(digest,old,new) in changes.items():
+            p=pathlib.Path(name);data=p.read_bytes();assert hashlib.sha256(data).hexdigest()==digest,name
+            s=data.decode();assert s.count(old)==1,name;p.write_text(s.replace(old,new))
+          PY
+          npm test
+          git diff --check
+      - name: Commit optimization and test complete production renderer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/render/common.wgsl src/render/assets.js
+          git commit -m 'perf(renderer): use constant-time UDIM lookup without nested material sampling searches'
+          git push origin HEAD:feat/production-systems-v03
+          gh workflow run webgpu.yml --ref feat/production-systems-v03
