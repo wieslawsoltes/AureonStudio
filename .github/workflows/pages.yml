@@ -35,8 +35,11 @@ jobs:
           root = pathlib.Path('_site')
           files = {p.relative_to(root).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
                    for p in sorted(root.rglob('*')) if p.is_file()}
+          # Pages consumes this hosting-control marker but does not serve it.
+          files.pop('.nojekyll', None)
           version = json.loads(pathlib.Path('package.json').read_text())['version']
-          expected = {'commit': os.environ['GITHUB_SHA'], 'version': version, 'files': files}
+          expected = {'commit': os.environ['GITHUB_SHA'], 'version': version, 'files': files,
+                      'hostingControlFiles': ['.nojekyll']}
           pathlib.Path('.publication/expected.json').write_text(json.dumps(expected, indent=2) + '\n')
           print(f'Recorded {len(files)} browser asset checksums for {expected["commit"]}.')
           PY
@@ -111,7 +114,8 @@ jobs:
               results = list(executor.map(check, expected['files'].items()))
           errors = [result for result in results if 'error' in result]
           report = {'url': base, 'commit': expected['commit'], 'version': expected['version'],
-                    'success': not errors, 'verifiedAssets': len(results) - len(errors), 'files': results}
+                    'success': not errors, 'verifiedAssets': len(results) - len(errors), 'files': results,
+                    'hostingControlFiles': expected.get('hostingControlFiles', [])}
           pathlib.Path('.publication/live-verification.json').write_text(json.dumps(report, indent=2) + '\n')
           print(json.dumps({'url': base, 'commit': expected['commit'], 'verifiedAssets': report['verifiedAssets'], 'errors': errors}, indent=2))
           if errors:
