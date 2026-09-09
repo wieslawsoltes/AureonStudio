@@ -1,0 +1,71 @@
+name: Diagnose production pipeline compilation
+on:
+  push:
+    branches: [feat/production-systems-v03]
+    paths: [.github/workflows/diagnose-pipelines.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - run: |
+          python3 -m pip install -r requirements-dev.txt
+          python3 -m playwright install --with-deps chromium
+      - name: Record actual compiler completion and pipeline timings
+        run: |
+          python3 -u - <<'PY'
+          import json, pathlib, subprocess, time, urllib.request
+          from playwright.sync_api import sync_playwright
+          out=pathlib.Path('test-results/compile');out.mkdir(parents=True,exist_ok=True)
+          server=subprocess.Popen(['node','scripts/serve.mjs'],stdout=subprocess.DEVNULL)
+          time.sleep(1)
+          result={}
+          try:
+              with sync_playwright() as p:
+                  browser=p.chromium.launch(headless=True,args=['--no-sandbox','--enable-unsafe-webgpu','--use-angle=swiftshader','--enable-features=Vulkan','--disable-vulkan-surface','--use-vulkan=swiftshader'])
+                  page=browser.new_page()
+                  page.on('console',lambda msg:print(msg.type,msg.text,flush=True))
+                  page.route('**/compile-probe.html',lambda route:route.fulfill(status=200,content_type='text/html',body='<title>Compiler probe</title>'))
+                  page.goto('http://localhost:4173/compile-probe.html')
+                  page.evaluate('''async()=>{
+                    window.probe={steps:[],done:false};let started=performance.now();
+                    const step=(name,value)=>{probe.steps.push({name,ms:performance.now()-started,value});console.log(JSON.stringify(probe.steps.at(-1)));};
+                    try {
+                      let adapter=await navigator.gpu.requestAdapter();step('adapter',!!adapter);
+                      let d=await adapter.requestDevice();window.device=d;
+                      d.addEventListener('uncapturederror',e=>step('error',e.error.message));
+                      const common=await(await fetch('src/render/common.wgsl')).text();
+                      for (const file of ['pathtrace.wgsl','raster.wgsl','display.wgsl','denoise.wgsl']) {
+                        let code=(file==='denoise.wgsl'?'':common+'\n')+await(await fetch('src/render/'+file)).text();
+                        d.pushErrorScope('validation');let m=d.createShaderModule({code});let scope=d.popErrorScope();
+                        let info=await m.getCompilationInfo();step(file,info.messages.map(x=>({type:x.type,message:x.message,line:x.lineNum})));await scope;
+                        if(file==='pathtrace.wgsl')window.module=m;
+                      }
+                      for(const entryPoint of ['photonMain','main']) {
+                        step('start '+entryPoint,true);
+                        await d.createComputePipelineAsync({layout:'auto',compute:{module:window.module,entryPoint}});
+                        step('compiled '+entryPoint,true);
+                      }
+                    }catch(e){step('failure',String(e));}finally{probe.done=true;}
+                  }''')
+                  result=page.evaluate('probe')
+                  browser.close()
+          finally:
+              (out/'probe.json').write_text(json.dumps(result,indent=2));server.terminate()
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pipeline-diagnostics
+          path: test-results/compile/
+          retention-days: 7
