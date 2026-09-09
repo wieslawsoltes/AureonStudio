@@ -35,7 +35,8 @@ test('Pages stages byte-identical public assets and excludes development files',
   assert.equal(files.filter(name => name.endsWith('.wgsl')).length, 5);
   assert.equal(files.filter(name => name.endsWith('.aureon')).length, 11);
   const deployment = JSON.parse(await readFile(join(outputRoot, 'deployment.json'), 'utf8'));
-  assert.equal(deployment.version, '0.2.0');
+  const metadata = JSON.parse(await readFile(join(PROJECT_ROOT, 'package.json'), 'utf8'));
+  assert.equal(deployment.version, metadata.version);
   assert.equal(deployment.application, 'Aureon Studio + Aureon Ray');
 });
 
