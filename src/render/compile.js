@@ -51,8 +51,9 @@ export function compileTriangles(doc, geometry) {
                 const normal = mesh.smooth !== false && !d.flat.has(face) ? normalsWorld[ids[v]] : fn;
                 chunk.set([...normal, 0], j + 12 + v * 4);
             }
+            const faceMaterial=doc.materials[obj.materialSlots?.[mesh.faceMaterials?.[face]]??obj.material],mediumCandidate=faceMaterial.transmission>0||faceMaterial.subsurface?.weight>0||faceMaterial.graph?.outputs?.transmission||faceMaterial.graph?.outputs?.subsurface;
             const uv = ids.map(i => mesh.uvs?.slice(i * 2, i * 2 + 2) || [0, 0]);
-            chunk.set([uv[0][0] || 0, uv[0][1] || 0, uv[1][0] || 0, uv[1][1] || 0, uv[2][0] || 0, uv[2][1] || 0, (obj.hiddenInViewport ? 1 : 0) + (obj.cameraVisible === false ? 2 : 0), 0], j + 24);
+            chunk.set([uv[0][0] || 0, uv[0][1] || 0, uv[1][0] || 0, uv[1][1] || 0, uv[2][0] || 0, uv[2][1] || 0, (obj.hiddenInViewport ? 1 : 0) + (obj.cameraVisible === false ? 2 : 0) + (mediumCandidate ? 4 : 0), 0], j + 24);
             j += TRI_FLOATS;
         }
         chunks.push(chunk.subarray(0, j));

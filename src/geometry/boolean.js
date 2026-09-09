@@ -1,13 +1,14 @@
-/** Plane/BSP solid boolean operations. Original implementation, tolerance-based
- * (not exact predicates). Inputs must be consistently wound, closed 2-manifolds.
+/** Exact rational BSP is the default. An explicit fast mode retains the
+ * tolerance-based implementation. Inputs must be closed, outward 2-manifolds.
  * Coordinates and UVs are interpolated at every split; inputs are never mutated.
  */
 import {add,sub,mul,dot,cross,normalize,lerp,transformPoint} from '../core/math.js';
 import {vertex,triangulate,validateMesh,bounds} from './mesh.js';
+import {exactBoolean} from './exact-boolean.js';
 export function topology(mesh, tolerance=1e-7) {
     validateMesh(mesh);
     const canonical=new Map(), ids=[];let next=0;
-    for(let i=0;i<mesh.positions.length/3;i++) {const key=vertex(mesh,i).map(v=>Math.round(v/tolerance)).join(',');if(!canonical.has(key))canonical.set(key,next++);ids.push(canonical.get(key));}
+    for(let i=0;i<mesh.positions.length/3;i++) {const key=vertex(mesh,i).map(v=>tolerance===0?v:Math.round(v/tolerance)).join(',');if(!canonical.has(key))canonical.set(key,next++);ids.push(canonical.get(key));}
     const edges=new Map();let degenerate=0;
     for(const f of mesh.faces) for(let j=0;j<f.length;j++) {const a=ids[f[j]],b=ids[f[(j+1)%f.length]];if(a===b){degenerate++;continue;}const key=a<b?`${a}:${b}`:`${b}:${a}`;const e=edges.get(key)||{count:0,balance:0};e.count++;e.balance+=a<b?1:-1;edges.set(key,e);}
     return {vertices:next,edges:edges.size,faces:mesh.faces.length,boundary:[...edges.values()].filter(e=>e.count===1).length,nonManifold:[...edges.values()].filter(e=>e.count>2).length,inconsistent:[...edges.values()].filter(e=>e.count===2&&e.balance!==0).length,degenerate};
@@ -37,8 +38,13 @@ function inputPolygons(m,tag) {return triangulate(m).map(({ids})=>new Polygon(id
 function stitchTJunctions(out,eps){const points=[];const seen=new Map();for(let i=0;i<out.positions.length/3;i++){const p=vertex(out,i),key=p.map(v=>Math.round(v/eps)).join(',');if(!seen.has(key)){seen.set(key,points.length);points.push(p);}}
     if(points.length>12000)throw Error('Boolean output exceeds the 12,000 unique-vertex stitching budget');
     out.faces=out.faces.map(face=>{const result=[];for(let e=0;e<face.length;e++){const ia=face[e],ib=face[(e+1)%face.length],a=vertex(out,ia),b=vertex(out,ib),d=sub(b,a),len2=dot(d,d),cuts=[];result.push(ia);if(len2<=eps*eps)continue;for(const p of points){const t=dot(sub(p,a),d)/len2;if(t<=eps||t>=1-eps)continue;if(Math.hypot(...sub(p,add(a,mul(d,t))))<=eps)cuts.push({t,p});}cuts.sort((a,b)=>a.t-b.t);let last=-1;for(const c of cuts){if(c.t-last<eps)continue;last=c.t;const id=out.positions.length/3;out.positions.push(...c.p);out.uvs.push(...lerp(out.uvs.slice(ia*2,ia*2+2),out.uvs.slice(ib*2,ib*2+2),c.t));result.push(id);}}return result;});}
-export function booleanMesh(a,b,operation='union',{tolerance,validate=true}={}) {
+export function booleanMesh(a,b,operation='union',{tolerance,validate=true,precision='exact',...limits}={}) {
     if(!['union','subtract','intersect'].includes(operation))throw Error('Boolean operation must be union, subtract, or intersect');
+    if(!['exact','fast'].includes(precision))throw Error('Unknown Boolean precision');
+    if(precision==='exact'){
+        for(const m of [a,b]){validateMesh(m);if(validate&&m.faces.length){const t=topology(m,0);if(t.boundary||t.nonManifold||t.inconsistent||t.degenerate)throw Error('Boolean requires closed, consistently oriented manifold operands');if(signedVolume(m)<=0)throw Error('Boolean operands must have outward-facing winding and positive volume');}}
+        return exactBoolean(a,b,operation,limits);
+    }
     const ba=bounds(a),bb=bounds(b),size=Math.max(...ba.max.map((v,i)=>v-ba.min[i]),...bb.max.map((v,i)=>v-bb.min[i]),1);const eps=tolerance??size*1e-7;
     if(!Number.isFinite(eps)||eps<=0)throw Error('Invalid boolean tolerance');
     if(a.faces.length+b.faces.length>50000)throw Error('Boolean operand budget is 50,000 polygons');

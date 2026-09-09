@@ -7,7 +7,7 @@ import {emptyDocument} from '../src/scene/document.js';
 import {decodeEXR} from '../src/io/exr.js';
 test('Coordinator HTTP: auth, CORS, leasing, heartbeat, binary merge, EXR, cancellation',async()=>{
  const socket=net.createServer();await new Promise(r=>socket.listen(0,'127.0.0.1',r));const port=socket.address().port;await new Promise(r=>socket.close(r));
- const child=spawn(process.execPath,['scripts/render-server.mjs'],{cwd:new URL('..',import.meta.url),env:{...process.env,RENDER_PORT:String(port),RENDER_TOKEN:'test-token-not-for-production'},stdio:['ignore','pipe','pipe']});
+ const child=spawn(process.execPath,['scripts/render-server.mjs'],{cwd:new URL('..',import.meta.url),env:{...process.env,RENDER_EPHEMERAL:'1',RENDER_PORT:String(port),RENDER_TOKEN:'test-token-not-for-production'},stdio:['ignore','pipe','pipe']});
  const headers={Authorization:'Bearer test-token-not-for-production'},url=`http://127.0.0.1:${port}`;
  try{
   await new Promise((resolve,reject)=>{const timeout=setTimeout(()=>reject(Error('Coordinator startup timeout')),5000);child.stdout.once('data',()=>{clearTimeout(timeout);resolve();});child.once('error',reject);child.once('exit',code=>{if(code)reject(Error('Coordinator exited '+code));});});
