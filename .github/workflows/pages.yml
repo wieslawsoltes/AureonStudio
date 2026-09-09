@@ -1,0 +1,126 @@
+name: Deploy Aureon Studio to GitHub Pages
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - name: Run CPU, HTTP and deployment packaging tests
+        run: |
+          mkdir -p .publication
+          set -o pipefail
+          npm test | tee .publication/tests.tap
+      - name: Stage the browser application
+        run: npm run build:pages
+      - name: Record exact deployable asset checksums
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib
+          root = pathlib.Path('_site')
+          files = {p.relative_to(root).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
+                   for p in sorted(root.rglob('*')) if p.is_file()}
+          version = json.loads(pathlib.Path('package.json').read_text())['version']
+          expected = {'commit': os.environ['GITHUB_SHA'], 'version': version, 'files': files}
+          pathlib.Path('.publication/expected.json').write_text(json.dumps(expected, indent=2) + '\n')
+          print(f'Recorded {len(files)} browser asset checksums for {expected["commit"]}.')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: publication-proof
+          path: .publication/
+          retention-days: 30
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+  deploy:
+    if: github.event_name != 'pull_request'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@v5
+      - name: Publish the tested browser artifact
+        id: deployment
+        uses: actions/deploy-pages@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: publication-proof
+          path: .publication
+      - name: Verify the live revision and every published asset
+        env:
+          SITE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          python3 - <<'PY'
+          import concurrent.futures, hashlib, json, os, pathlib, time, urllib.parse, urllib.request
+          expected = json.loads(pathlib.Path('.publication/expected.json').read_text())
+          base = os.environ['SITE_URL'].rstrip('/') + '/'
+          if urllib.parse.urlparse(base).scheme != 'https' or expected['commit'] != os.environ['GITHUB_SHA']:
+              raise ValueError('Invalid deployment origin or build revision')
+          def check(item):
+              name, digest = item
+              path = pathlib.PurePosixPath(name)
+              if path.is_absolute() or '..' in path.parts or str(path) != name:
+                  raise ValueError('Unsafe asset path')
+              url = urllib.parse.urljoin(base, urllib.parse.quote(name, safe='/'))
+              url += '?revision=' + expected['commit']
+              error = None
+              for attempt in range(12):
+                  try:
+                      request = urllib.request.Request(url, headers={'Cache-Control': 'no-cache', 'User-Agent': 'Aureon-publication-verifier'})
+                      with urllib.request.urlopen(request, timeout=30) as response:
+                          data = response.read()
+                          status = response.status
+                      if status != 200 or hashlib.sha256(data).hexdigest() != digest:
+                          raise ValueError('Published bytes do not match the tested build')
+                      if name == 'deployment.json':
+                          metadata = json.loads(data)
+                          if metadata['commit'] != expected['commit'] or metadata['version'] != expected['version']:
+                              raise ValueError('Published revision or version mismatch')
+                      return {'path': name, 'status': status, 'bytes': len(data), 'sha256': digest}
+                  except Exception as exc:
+                      error = str(exc)
+                      if attempt < 11:
+                          time.sleep(5)
+              return {'path': name, 'error': error}
+          with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
+              results = list(executor.map(check, expected['files'].items()))
+          errors = [result for result in results if 'error' in result]
+          report = {'url': base, 'commit': expected['commit'], 'version': expected['version'],
+                    'success': not errors, 'verifiedAssets': len(results) - len(errors), 'files': results}
+          pathlib.Path('.publication/live-verification.json').write_text(json.dumps(report, indent=2) + '\n')
+          print(json.dumps({'url': base, 'commit': expected['commit'], 'verifiedAssets': report['verifiedAssets'], 'errors': errors}, indent=2))
+          if errors:
+              raise SystemExit('Live asset verification failed')
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+              summary.write(f'## Aureon Studio published\n\n{base}\n\nRevision: `{expected["commit"]}`\n\nAll {len(results)} live browser assets match the tested build.\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: live-publication-verification
+          path: .publication/live-verification.json
+          if-no-files-found: warn
+          retention-days: 30
