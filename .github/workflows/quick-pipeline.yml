@@ -1,0 +1,55 @@
+name: Bounded pipeline diagnostic
+on:
+  push:
+    branches: [feat/production-systems-v03]
+    paths: [.github/workflows/quick-pipeline.yml]
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - run: |
+          python3 -m pip install -r requirements-dev.txt
+          python3 -m playwright install --with-deps chromium
+      - name: Diagnose without awaiting an unbounded compiler
+        run: |
+          python3 -u - <<'PY'
+          import json,pathlib,subprocess,time
+          from playwright.sync_api import sync_playwright
+          out=pathlib.Path('test-results/quick');out.mkdir(parents=True,exist_ok=True)
+          server=subprocess.Popen(['node','scripts/serve.mjs'],stdout=subprocess.DEVNULL);time.sleep(1)
+          with sync_playwright() as p:
+            browser=p.chromium.launch(headless=True,args=['--no-sandbox','--enable-unsafe-webgpu','--use-angle=swiftshader','--enable-features=Vulkan','--disable-vulkan-surface','--use-vulkan=swiftshader'])
+            page=browser.new_page(); page.on('console',lambda m:print(m.text,flush=True))
+            page.route('**/probe.html',lambda r:r.fulfill(status=200,content_type='text/html',body='<title>Probe</title>'))
+            page.goto('http://localhost:4173/probe.html')
+            page.evaluate(r'''()=>{window.result={steps:[],done:false};void(async()=>{
+              const step=(name,data)=>{result.steps.push({name,data,time:performance.now()});console.log(JSON.stringify(result.steps.at(-1)));};
+              try {
+                const a=await navigator.gpu.requestAdapter();const d=await a.requestDevice();step('device',true);
+                const common=await(await fetch('src/render/common.wgsl')).text();let module;
+                for(const name of ['pathtrace.wgsl','raster.wgsl','display.wgsl','denoise.wgsl']){
+                  const code=(name==='denoise.wgsl'?'':common+'\n')+await(await fetch('src/render/'+name)).text();
+                  const m=d.createShaderModule({code});const info=await m.getCompilationInfo();step(name,info.messages.map(x=>({message:x.message,line:x.lineNum,type:x.type})));if(name==='pathtrace.wgsl')module=m;
+                }
+                for(const entryPoint of ['photonMain','main']){step('start '+entryPoint,true);await d.createComputePipelineAsync({layout:'auto',compute:{module,entryPoint}});step('done '+entryPoint,true);}
+              }catch(e){step('error',String(e));}finally{result.done=true;}
+            })();}''')
+            for i in range(24):
+              time.sleep(5); result=page.evaluate('result');(out/'probe.json').write_text(json.dumps(result,indent=2))
+              if result['done']:break
+            print(json.dumps(result,indent=2),flush=True)
+            browser.close()
+          server.terminate()
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: bounded-pipeline-diagnostic
+          path: test-results/quick/
+          retention-days: 3
