@@ -23,8 +23,9 @@ fn assetScalar(offset:u32)->f32 {let code=graphCode[offset/16u];let lane=offset%
 fn udimTexel(desc:GraphInstruction,pixel:vec2i,level:i32)->vec4f {
  let dims=vec2i(textureDimensions(bitmapArray,level));let tile=vec2i(floor(vec2f(pixel)/vec2f(dims)));
  if(tile.x<0||tile.x>9||tile.y<0||tile.y>99){return desc.value;}
- for(var i=0u;i<u32(desc.op.z);i++){let t=graphCode[u32(desc.op.w)+i].op;if(all(vec2i(t.xy)==tile)){return textureLoad(bitmapArray,pixel-tile*dims,i32(t.z),level);}}
- return desc.value;
+ let address=u32(tile.y*10+tile.x);if(address>=u32(desc.op.z)){return desc.value;}
+ let layer=i32(assetScalar(u32(desc.op.w)+address))-1;if(layer<0){return desc.value;}
+ return textureLoad(bitmapArray,pixel-tile*dims,layer,level);
 }
 fn udimLevel(desc:GraphInstruction,uv:vec2f,level:i32)->vec4f {let size=vec2f(textureDimensions(bitmapArray,level));let p=uv*size-.5;let base=vec2i(floor(p));let f=fract(p);return mix(mix(udimTexel(desc,base,level),udimTexel(desc,base+vec2i(1,0),level),f.x),mix(udimTexel(desc,base+vec2i(0,1),level),udimTexel(desc,base+vec2i(1,1),level),f.x),f.y);}
 fn sampleBitmap(index:u32,uv:vec2f,lod:f32)->vec4f {
