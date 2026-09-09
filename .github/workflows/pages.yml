@@ -44,6 +44,8 @@ jobs:
         with:
           name: publication-proof
           path: .publication/
+          include-hidden-files: true
+          if-no-files-found: error
           retention-days: 30
       - uses: actions/upload-pages-artifact@v4
         with:
@@ -122,5 +124,6 @@ jobs:
         with:
           name: live-publication-verification
           path: .publication/live-verification.json
+          include-hidden-files: true
           if-no-files-found: warn
           retention-days: 30
