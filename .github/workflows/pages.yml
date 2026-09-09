@@ -10,6 +10,8 @@ concurrency:
   group: pages-${{ github.ref }}
   cancel-in-progress: false
 jobs:
+  gpu:
+    uses: ./.github/workflows/webgpu.yml
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -55,7 +57,7 @@ jobs:
           path: _site
   deploy:
     if: github.event_name != 'pull_request'
-    needs: build
+    needs: [build, gpu]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
