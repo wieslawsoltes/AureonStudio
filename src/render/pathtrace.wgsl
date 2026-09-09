@@ -50,7 +50,13 @@ fn directMedium(p:vec3f,forward:vec3f,g:f32,canContinue:bool)->vec3f {
  if(cam.forward.w>0.){let wi=environmentDirection();let shadow=Ray(p+wi*1e-4,wi);if(intersect(shadow,1e30,true,false).triangle==0xffffffffu){let pdf=1./(4.*PI);let phase=phaseHG(dot(forward,wi),g);result+=environment(wi)*phase*transmittance(shadow,1e30)*select(1.,powerHeuristic(pdf,phase),canContinue)/pdf;}}
  return result;
 }
-fn photonHash(c:vec3i)->u32{return (u32(c.x)*73856093u^u32(c.y)*19349663u^u32(c.z)*83492791u)&4095u;}
+// WGSL requires explicit grouping between multiplication and bitwise XOR.
+fn photonHash(c:vec3i)->u32 {
+ let x=u32(c.x)*73856093u;
+ let y=u32(c.y)*19349663u;
+ let z=u32(c.z)*83492791u;
+ return (x ^ y ^ z) & 4095u;
+}
 fn photonGather(p:vec3f,n:vec3f,wo:vec3f,m:Material)->vec3f {
  let radius=max(.0001,cam.render.z);let cell=vec3i(floor(p/radius));var result=vec3f(0.);
  for(var z=-1;z<=1;z++){for(var y=-1;y<=1;y++){for(var x=-1;x<=1;x++){let c=cell+vec3i(x,y,z);var next=atomicLoad(&photonMap.heads[photonHash(c)]);loop{if(next==0u){break;}let record=photonMap.records[next-1u];next=record.next.x;
