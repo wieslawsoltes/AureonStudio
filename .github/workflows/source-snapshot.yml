@@ -1,0 +1,20 @@
+name: Source snapshot for production systems
+on:
+  push:
+    branches: [feat/production-systems-v03]
+    paths: [.github/workflows/source-snapshot.yml]
+permissions:
+  contents: read
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - run: git archive --format=zip --output=/tmp/aureon-current-source.zip HEAD
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aureon-current-source
+          path: /tmp/aureon-current-source.zip
+          retention-days: 3
