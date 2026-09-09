@@ -1,0 +1,44 @@
+name: Build pinned USD browser codec
+on:
+  push:
+    branches: [feat/production-systems-v03]
+    paths: [.github/workflows/build-usd.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  usd:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Install pinned WebAssembly toolchain and source
+        run: |
+          git clone --quiet https://github.com/emscripten-core/emsdk.git /tmp/emsdk
+          git -C /tmp/emsdk checkout --quiet 389a68bc35dcff7ebae4614e1615099dafda00d1
+          /tmp/emsdk/emsdk install 4.0.15
+          /tmp/emsdk/emsdk activate 4.0.15
+          git clone --quiet --no-checkout https://github.com/lighttransport/LightUSD.git /tmp/usd
+          git -C /tmp/usd checkout --quiet 46c2e36b1d488571e666a2ee9a6619cec6ea064b
+      - name: Compile single-threaded USDZ USDC USDA and composition binding
+        run: |
+          source /tmp/emsdk/emsdk_env.sh
+          emcmake cmake -S /tmp/usd/web -B /tmp/usd-build -DCMAKE_BUILD_TYPE=MinSizeRel -DTINYUSDZ_WITH_TYDRA=ON -DTINYUSDZ_WITH_THREAD=OFF -DTINYUSDZ_WITH_PYTHON=OFF -DTINYUSDZ_BUILD_TESTS=OFF -DTINYUSDZ_BUILD_EXAMPLES=OFF
+          cmake --build /tmp/usd-build -j2
+          mkdir -p codec/usd/licenses
+          cp /tmp/usd/web/js/src/tinyusdz/tinyusdz.js codec/usd/tinyusdz.js
+          cp /tmp/usd/web/js/src/tinyusdz/tinyusdz.wasm codec/usd/tinyusdz.wasm
+          find /tmp/usd -iname '*license*' -type f -not -path '*/.git/*' -exec cp --parents {} codec/usd/licenses/ \;
+          printf '{"source":"lighttransport/LightUSD","revision":"46c2e36b1d488571e666a2ee9a6619cec6ea064b","emscripten":"4.0.15","threads":false}\n' > codec/usd/provenance.json
+          find codec -type f -exec sha256sum {} \; > codec.sha256
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: usd-browser-codec
+          path: |
+            codec/
+            codec.sha256
+          if-no-files-found: warn
+          retention-days: 7
