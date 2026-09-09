@@ -1,0 +1,86 @@
+name: WebGPU renderer regression
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+permissions:
+  contents: read
+jobs:
+  webgpu:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - name: Install browser test tooling
+        run: |
+          python3 -m pip install -r requirements-dev.txt
+          python3 -m playwright install --with-deps chromium
+      - name: Compile all WGSL and execute production rendering on SwiftShader
+        run: |
+          node scripts/serve.mjs > /tmp/aureon-http.log 2>&1 &
+          python3 -u - <<'PY'
+          import json, pathlib, time, urllib.request
+          from playwright.sync_api import sync_playwright
+          out = pathlib.Path('test-results/gpu'); out.mkdir(parents=True, exist_ok=True)
+          report = {'backend': 'SwiftShader software WebGPU; correctness, not hardware performance', 'shaders': {}, 'errors': []}
+          try:
+              for _ in range(50):
+                  try:
+                      urllib.request.urlopen('http://localhost:4173', timeout=1).close(); break
+                  except OSError: time.sleep(.2)
+              with sync_playwright() as p:
+                  browser = p.chromium.launch(headless=True, args=['--no-sandbox', '--enable-unsafe-webgpu', '--use-angle=swiftshader', '--enable-features=Vulkan', '--disable-vulkan-surface', '--use-vulkan=swiftshader'])
+                  report['browser'] = browser.version
+                  page = browser.new_page(viewport={'width': 1024, 'height': 768})
+                  page.on('pageerror', lambda e: report['errors'].append(str(e)))
+                  page.goto('http://localhost:4173/tests/production-gpu.html')
+                  page.wait_for_function('window.done===true', timeout=300000)
+                  report['production'] = page.evaluate('window.report')
+                  report['shaders'] = page.evaluate('''async () => {
+                    const adapter = await navigator.gpu.requestAdapter(); if (!adapter) throw Error('No WebGPU adapter');
+                    const device = await adapter.requestDevice(); const base = new URL('../src/render/', location.href);
+                    const common = await (await fetch(new URL('common.wgsl', base))).text(); const results = {};
+                    for (const name of ['pathtrace.wgsl','raster.wgsl','display.wgsl','denoise.wgsl']) {
+                      const code = (name === 'denoise.wgsl' ? '' : common+'\\n') + await (await fetch(new URL(name, base))).text();
+                      device.pushErrorScope('validation');
+                      const info = await device.createShaderModule({code, label:name}).getCompilationInfo();
+                      results[name] = info.messages.map(m => ({type:m.type, line:m.lineNum, column:m.linePos, message:m.message}));
+                      await device.popErrorScope();
+                    }
+                    device.destroy(); return results;
+                  }''')
+                  page.screenshot(path=str(out/'production.png'))
+                  if report['production']['status'] != 'passed' or any(m['type']=='error' for messages in report['shaders'].values() for m in messages):
+                      raise RuntimeError('GPU regression failed; see diagnostics.json')
+                  page.goto('http://localhost:4173/')
+                  page.wait_for_function('window.aureon?.ready', timeout=60000)
+                  if not page.evaluate('aureon.gpuReady'): raise RuntimeError('Editor GPU initialization failed')
+                  page.wait_for_function('aureon.compiled && !aureon.needsBuild && !aureon.building && !aureon.renderer.busy', timeout=60000)
+                  page.screenshot(path=str(out/'editor.png'))
+                  report['editor'] = page.evaluate('({triangles:aureon.compiled.triangles.length/32, errors:aureon.renderer.errors, samples:aureon.renderer.samples})')
+                  if report['editor']['errors'] or report['errors']: raise RuntimeError('Editor validation errors')
+                  browser.close()
+                  report['status'] = 'passed'
+          except Exception as e:
+              report['status'] = 'failed'; report['failure'] = str(e)
+          finally:
+              (out/'diagnostics.json').write_text(json.dumps(report, indent=2))
+              print(json.dumps(report, indent=2))
+          if report['status'] != 'passed': raise SystemExit(1)
+          PY
+      - name: Retain GPU validation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: webgpu-regression
+          path: test-results/gpu
+          if-no-files-found: error
+          retention-days: 30
