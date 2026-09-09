@@ -1,0 +1,37 @@
+name: Pinned interchange sources
+on:
+  push:
+    branches: [feat/production-systems-v03]
+    paths: [.github/workflows/interop-sources.yml]
+permissions:
+  contents: read
+jobs:
+  sources:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch exact upstream source revisions
+        run: |
+          mkdir -p /tmp/interop
+          python3 - <<'PY'
+          import io, pathlib, tarfile, urllib.request, json
+          root=pathlib.Path('/tmp/interop')
+          pins={'ufbx':('ufbx/ufbx','fcc5d6ba444cfd3eb80677dba5e37e493941abe5'),'tinyusdz':('lighttransport/LightUSD','46c2e36b1d488571e666a2ee9a6619cec6ea064b'),'alembic':('alembic/alembic','6f59e4d0c9012c67e242da510b31d96504db8e01'),'openvdb':('AcademySoftwareFoundation/openvdb','7ace04a804b7338836b32a6e77903e0983c99ece')}
+          for name,(repo,sha) in pins.items():
+              data=urllib.request.urlopen(f'https://codeload.github.com/{repo}/tar.gz/{sha}',timeout=120).read()
+              with tarfile.open(fileobj=io.BytesIO(data),mode='r:gz') as archive:
+                  dest=root/name; dest.mkdir()
+                  for member in archive.getmembers():
+                      path=pathlib.PurePosixPath(member.name)
+                      if not member.isfile() or '..' in path.parts: continue
+                      relative=pathlib.Path(*path.parts[1:])
+                      if relative.suffix.lower() in ('.h','.hpp','.hh','.hxx','.c','.cc','.cpp','.cxx','.in','.cmake','.txt','.md','.js','.json','.sh','.py') or relative.name.lower().startswith(('license','copying','cmakelists')):
+                          target=dest/relative; target.parent.mkdir(parents=True,exist_ok=True)
+                          target.write_bytes(archive.extractfile(member).read())
+          (root/'pins.json').write_text(json.dumps(pins,indent=2))
+          PY
+          cd /tmp && zip -qr interop-sources.zip interop
+      - uses: actions/upload-artifact@v4
+        with:
+          name: interop-sources
+          path: /tmp/interop-sources.zip
+          retention-days: 3
