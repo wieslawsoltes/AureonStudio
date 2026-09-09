@@ -212,6 +212,25 @@ try:
         page.evaluate('aureon.renderer.paused=false;aureon.doc.settings.samples=2;aureon.dirty=true')
         page.wait_for_function('aureon.renderer.samples>=2 && !aureon.renderer.busy',timeout=45000)
 
+        # A retained production result must not strand the interactive viewport
+        # at export resolution or leave its shutter-time snapshot bound.
+        def production_snapshot():
+            page.evaluate("""async()=>{
+              aureon.renderLocked=true;
+              while(aureon.building||aureon.renderer.busy)await new Promise(r=>setTimeout(r,10));
+              const {renderProduction}=await import('./src/render/production.js');
+              const snapshot=structuredClone(aureon.doc);snapshot.objects=[];
+              try{await renderProduction(aureon.renderer,snapshot,{width:32,height:24,samples:2,shutter:[0,0]});aureon.renderer.paused=true;aureon.dirty=false;}
+              finally{aureon.renderLocked=false;}
+            }""")
+        production_snapshot()
+        page.evaluate('aureon.toggleRender(false)');settled()
+        check('Back to modeling restores viewport size and canonical scene after production rendering',page.evaluate('!aureon.renderer.fixedSize && aureon.renderer.mode==="raster" && aureon.renderer.scene.triangles.length===aureon.compiled.triangles.length && aureon.renderer.scene.triangles.length>0'))
+        production_snapshot()
+        page.evaluate('aureon.doc.settings.samples=2;aureon.doc.camera.yaw+=.05;aureon.cameraChanged()');settled()
+        page.wait_for_function('aureon.renderer.samples>=2 && !aureon.renderer.busy',timeout=45000)
+        check('Camera edits exit a paused production snapshot and render the editable scene',page.evaluate('!aureon.renderer.fixedSize && !aureon.renderer.paused && aureon.renderer.scene.triangles.length>0'))
+
         # Empty buffers, zero lights and an environment-only path are not mocked.
         page.evaluate('aureon.doc.objects=[];aureon.selected.clear();aureon.geometry.clear();aureon.changed()')
         settled()

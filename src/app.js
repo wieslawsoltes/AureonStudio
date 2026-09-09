@@ -99,11 +99,11 @@ class Studio {
         return result;
     }
     changed(rebuild = true) {
-        if(this.renderer?.fixedSize&&!this.renderLocked){this.renderer.fixedSize=null;this.renderer.tile=null;this.renderer.sampleStart=0;this.renderer.paused=false;}
+        const restored = this.resumeInteractive();
         this.geometry.setContext(this.doc);
         this.dirty = true;
         this.renderer.reset();
-        if (rebuild)
+        if (rebuild && !restored)
             this.requestBuild();
         this.refresh();
         clearTimeout(this.saveTimer);
@@ -179,10 +179,11 @@ class Studio {
         }
         catch (e) {
             this.gpuReady = false;
-            $('#gpu-label').textContent = 'GPU unavailable';
+            $('#gpu-label').textContent = e.label || 'Renderer error';
+            $('#render-backend').textContent = e.label || 'Renderer unavailable';
             $('.gpu-dot').style.background = 'var(--red)';
             $('#gpu-error').hidden = false;
-            $('#gpu-error').innerHTML = `${icon('info')}<h2>A WebGPU adapter is required</h2><p>${esc(e.message)}</p><p>The scene editor and file tools remain available. Rendering is not replaced with a simulated preview.</p>`;
+            $('#gpu-error').innerHTML = `${icon('info')}<h2>${esc(e.title || 'Renderer initialization failed')}</h2><p>${esc(e.message)}</p><p>The scene editor and file tools remain available. Rendering is not replaced with a simulated preview.</p>`;
             this.toast(e.message, true);
         }
         this.ready = true;
@@ -491,7 +492,20 @@ class Studio {
         $('#projection').value = view;
         this.cameraChanged();
     }
+    resumeInteractive() {
+        if (!this.renderer?.fixedSize || this.renderLocked) return false;
+        this.renderer.fixedSize = null;
+        this.renderer.tile = null;
+        this.renderer.sampleStart = 0;
+        this.renderer.paused = false;
+        // A production frame leaves a shutter-time scene on the GPU. Rebuild
+        // from the editable document before resuming the modeling viewport.
+        this.requestBuild();
+        this.dirty = true;
+        return true;
+    }
     cameraChanged() {
+        this.resumeInteractive();
         this.renderer.reset();
         this.dirty = true;
         this.drawGizmo();
@@ -538,6 +552,7 @@ class Studio {
         o.modifiers = [];
     }
     setFrame(frame, stop = true) {
+        this.resumeInteractive();
         if (stop)
             this.playing = false;
         const a = this.doc.animation;
@@ -559,9 +574,14 @@ class Studio {
     }
     toggleRender(force) {
         if (!this.gpuReady) {
-            this.toast('Rendering requires an available WebGPU adapter.', true);
+            this.toast(this.renderer.initializationError?.message || 'The renderer is not initialized.', true);
             return;
         }
+        if (this.renderLocked) {
+            this.toast('Cancel the active production render before changing render mode.', true);
+            return;
+        }
+        this.resumeInteractive();
         const trace = force ?? (this.renderer.mode !== 'trace');
         this.playing = false;
         this.renderer.mode = trace ? 'trace' : 'raster';
@@ -972,7 +992,7 @@ class Studio {
     }
     diagnostics() {
         const d = this.renderer.device, s = this.compiled, r = this.renderer;
-        const report = { version: '0.2.0', webgpu: !!this.gpuReady, adapter: r.info ? { vendor: r.info.vendor, architecture: r.info.architecture, device: r.info.device, description: r.info.description } : null, mode: r.mode, triangles: (s?.triangles.length || 0) / 32, bvhNodes: s?.nodeCount, bvhDepth: s?.maxDepth, bvhBuildMs: s?.buildMs, emissiveTriangles: s?.lightCount, samples: r.samples, viewport: [r.canvas.width, r.canvas.height], submissionCompletionMs: r.lastDuration, maxStorageBufferMiB: d?.limits.maxStorageBufferBindingSize / 1048576, validationErrors: r.errors, buildRevision: this.builtRevision, sceneRevision: this.revision };
+        const report = { version: '0.2.1', initializationError: r.initializationError ? { stage: r.initializationError.stage, message: r.initializationError.message, diagnostics: r.initializationError.diagnostics } : null, webgpu: !!this.gpuReady, adapter: r.info ? { vendor: r.info.vendor, architecture: r.info.architecture, device: r.info.device, description: r.info.description } : null, mode: r.mode, triangles: (s?.triangles.length || 0) / 32, bvhNodes: s?.nodeCount, bvhDepth: s?.maxDepth, bvhBuildMs: s?.buildMs, emissiveTriangles: s?.lightCount, samples: r.samples, viewport: [r.canvas.width, r.canvas.height], submissionCompletionMs: r.lastDuration, maxStorageBufferMiB: d?.limits.maxStorageBufferBindingSize / 1048576, validationErrors: r.errors, buildRevision: this.builtRevision, sceneRevision: this.revision };
         this.dialog('Renderer diagnostics', `<pre class="diagnostic-list">${esc(JSON.stringify(report, null, 2))}</pre><p class="note">Submission/completion time is measured with a queue fence. It is not a timestamp-query GPU-only measurement. No performance ranking is implied.</p>`, null, 'Close', 620);
     }
     keyboard(e) {

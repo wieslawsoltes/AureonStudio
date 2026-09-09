@@ -1,3 +1,4 @@
+import {RendererError, rendererError, readShader, compileShaderModule, validateResources} from './diagnostics.js';
 import {TextureArray} from '../materials/textures.js';
 import {compileGraphs} from '../materials/graph.js';
 import {Denoiser} from './denoiser.js';
@@ -18,14 +19,28 @@ export class Renderer {
         this.maxPixels = 2073600;
     }
     async init() {
+        try {
+            return await this.initialize();
+        } catch (error) {
+            this.initializationError = rendererError(error, this.initStage || 'initialization');
+            this.dispose();
+            throw this.initializationError;
+        }
+    }
+    async initialize() {
+        this.initStage = 'security';
         if (!globalThis.isSecureContext)
             throw Error('WebGPU requires HTTPS or localhost. Start the included local server.');
+        this.initStage = 'availability';
         if (!navigator.gpu)
             throw Error('This browser does not expose WebGPU. Use a WebGPU-capable browser with graphics acceleration enabled.');
         this.gpu = navigator.gpu;
+        this.initStage = 'adapter';
         this.adapter = await this.gpu.requestAdapter({ powerPreference: 'high-performance' });
         if (!this.adapter)
             throw Error('No WebGPU adapter is available. Check the browser GPU configuration.');
+        this.info = this.adapter.info;
+        this.initStage = 'device';
         this.device = await this.adapter.requestDevice();
         this.device.addEventListener('uncapturederror', e => {
             this.errors.push(e.error.message);
@@ -38,27 +53,30 @@ export class Renderer {
                 this.onStatus(`GPU device lost: ${info.message}. Save the scene and reload to reconnect.`, 'error');
             }
         });
+        this.initStage = 'context';
         this.context = this.canvas.getContext('webgpu');
+        if (!this.context) throw Error('Cannot acquire a WebGPU canvas context.');
         this.format = navigator.gpu.getPreferredCanvasFormat();
         this.context.configure({ device: this.device, format: this.format, alphaMode: 'opaque', usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_DST });
-        const read = async (file) => {
-            const res = await fetch(new URL(file, import.meta.url));
-            if (!res.ok)
-                throw Error(`Cannot load shader ${file}`);
-            return res.text();
-        };
-        const common = await read('common.wgsl');
-        const module = async (file) => {
-            const mod = this.device.createShaderModule({ label: file, code: common + '\n' + await read(file) }), info = await mod.getCompilationInfo(), errors = info.messages.filter(m => m.type === 'error');
-            if (errors.length)
-                throw Error(`${file}: ${errors.map(e => `${e.lineNum}:${e.linePos} ${e.message}`).join('\n')}`);
-            return mod;
-        };
-        const [compute, display, raster] = await Promise.all(['pathtrace.wgsl', 'display.wgsl', 'raster.wgsl'].map(module));
+        this.initStage = 'shader';
+        const common = await readShader(new URL('common.wgsl', import.meta.url));
+        const results = await Promise.allSettled(['pathtrace.wgsl', 'display.wgsl', 'raster.wgsl'].map(async file =>
+            compileShaderModule(this.device, file, await readShader(new URL(file, import.meta.url)), common + '\n')));
+        const failures = results.filter(result => result.status === 'rejected').map(result => result.reason);
+        if (failures.length) {
+            const first = rendererError(failures[0], 'shader');
+            throw new RendererError(first.stage, failures.map(error => error.message).join('\n'), {
+                cause: first, diagnostics: failures.flatMap(error => error.diagnostics || [])
+            });
+        }
+        const [compute, display, raster] = results.map(result => result.value);
+        this.initStage = 'pipeline';
         this.photonPipeline = await this.device.createComputePipelineAsync({ label: 'Linked-cell photon emission', layout: 'auto', compute: { module: compute, entryPoint: 'photonMain' } });
         this.compute = await this.device.createComputePipelineAsync({ label: 'Aureon Ray integrator', layout: 'auto', compute: { module: compute, entryPoint: 'main' } });
         this.display = await this.device.createRenderPipelineAsync({ label: 'Linear HDR display', layout: 'auto', vertex: { module: display, entryPoint: 'vertexMain' }, fragment: { module: display, entryPoint: 'fragmentMain', targets: [{ format: this.format }] }, primitive: { topology: 'triangle-list' } });
         this.raster = await this.device.createRenderPipelineAsync({ label: 'Modeling viewport', layout: 'auto', vertex: { module: raster, entryPoint: 'vertexMain' }, fragment: { module: raster, entryPoint: 'fragmentMain', targets: [{ format: this.format }] }, primitive: { topology: 'triangle-list', cullMode: 'none' }, depthStencil: { format: 'depth24plus', depthWriteEnabled: true, depthCompare: 'less' } });
+        this.initStage = 'resources';
+        await validateResources(this.device, () => {
         this.uniform = this.device.createBuffer({ label: 'Camera and frame', size: 512, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
         this.pixelBuffer = this.device.createBuffer({ size: 16, usage: GPUBufferUsage.STORAGE | GPUBufferUsage.COPY_SRC });
         this.buffers = { triangles: this.buffer(new Float32Array(32), 'Triangles'), nodes: this.buffer(new Float32Array(8), 'BVH nodes'), lights: this.buffer(new Float32Array(4), 'Emissive triangle CDF'), materials: this.buffer(new Float32Array(16), 'Materials') };
@@ -66,9 +84,11 @@ export class Renderer {
         this.photonBuffer=this.device.createBuffer({size:16384+80*8,usage:GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_DST|GPUBufferUsage.COPY_SRC});
         this.graphBuffer=this.buffer(new Float32Array(16),'Shader graphs');
         this.textureArray=new TextureArray(this.device);this.textureArray.upload([],1);
-        this.denoiser=await new Denoiser(this.device).init();
         this.bind();
-        this.info = this.adapter.info;
+        });
+        this.initStage = 'pipeline';
+        this.denoiser = await new Denoiser(this.device).init();
+        this.initStage = 'ready';
         return this;
     }
     buffer(data, label) {
