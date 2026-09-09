@@ -1,0 +1,65 @@
+name: Import verified Aureon source
+on:
+  push:
+    branches: [main]
+    paths: ['.github/import/ready']
+permissions:
+  contents: write
+concurrency:
+  group: source-import
+  cancel-in-progress: false
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - name: Verify and materialize the supplied development snapshot
+        run: |
+          python3 - <<'PY'
+          import base64, hashlib, io, pathlib, tarfile
+          root = pathlib.Path('.')
+          parts = sorted((root / '.github/import').glob('source.*.b64'))
+          if len(parts) != 12:
+              raise SystemExit('Incomplete source transfer')
+          text = ''.join(''.join(p.read_text().split()) for p in parts)
+          payload = base64.b64decode(text, validate=True)
+          expected = '42a18e2441c979101ac6b56c277559aa41f4076e1f0b3487e7a2631534bae71b'
+          if hashlib.sha256(payload).hexdigest() != expected:
+              raise SystemExit('Source snapshot checksum mismatch')
+          with tarfile.open(fileobj=io.BytesIO(payload), mode='r:xz') as archive:
+              members = archive.getmembers()
+              if len(members) != 109:
+                  raise SystemExit('Unexpected source file count')
+              for member in members:
+                  p = pathlib.PurePosixPath(member.name)
+                  if not member.isfile() or p.is_absolute() or '..' in p.parts or p.parts[0] in ('.git', '.github'):
+                      raise SystemExit('Unsafe archive member: ' + member.name)
+              archive.extractall(root, filter='data')
+          count = 0
+          for line in (root / 'MANIFEST.sha256').read_text().splitlines():
+              expected_hash, path = line.split('  ', 1)
+              if path.startswith('.github/'):
+                  continue
+              if hashlib.sha256((root / path).read_bytes()).hexdigest() != expected_hash:
+                  raise SystemExit('File checksum mismatch: ' + path)
+              count += 1
+          print(f'Verified {count} source files and the source manifest.')
+          PY
+      - name: Run CPU and Pages packaging tests
+        run: npm test
+      - name: Commit readable source files
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          python3 - <<'PY'
+          import pathlib, subprocess
+          paths = [line.split('  ', 1)[1] for line in pathlib.Path('MANIFEST.sha256').read_text().splitlines()]
+          paths = [p for p in paths if not p.startswith('.github/')]
+          subprocess.run(['git', 'add', '-f', '--', *paths, 'MANIFEST.sha256'], check=True)
+          PY
+          git commit -m 'feat: publish Aureon Studio and Aureon Ray v0.2 source'
+          git push origin HEAD:main
