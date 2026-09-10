@@ -16,11 +16,11 @@ ROOT = Path(__file__).resolve().parents[1]
 SUITES = ("transport", "advanced", "editor", "authoring")
 
 
-def command_for(suite: str, *, software: bool, output: Path, browser: str) -> list[str]:
+def command_for(suite: str, *, software: bool, output: Path, browser: str | None) -> list[str]:
     runners = {
         "transport": ["tests/gpu-regression.py", "--baseline-only"],
         "advanced": ["tests/page-runner.py"],
-        "editor": ["tests/browser.py", "--browser", browser],
+        "editor": ["tests/browser.py", *(["--browser", browser] if browser else [])],
         "authoring": ["tests/authoring.py"],
     }
     command = [sys.executable, *runners[suite], "--output", str(output / suite)]
@@ -41,11 +41,8 @@ def main() -> int:
     output = Path(args.output)
     if not output.is_absolute():
         output = ROOT / output
-    browser = args.browser or "<playwright-chromium>"
-    if "editor" in suites and not args.plan and not args.browser:
-        from playwright.sync_api import sync_playwright
-        with sync_playwright() as playwright:
-            browser = playwright.chromium.executable_path
+    # Keep Playwright's tested default headless browser unless explicitly overridden.
+    browser = args.browser
     commands = [{"suite": suite, "command": command_for(
         suite, software=args.software, output=output, browser=browser
     )} for suite in suites]

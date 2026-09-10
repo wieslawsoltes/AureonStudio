@@ -27,6 +27,8 @@ test('Single-suite CI execution does not omit tests or force software in hardwar
   assert.equal(commands[0].command[1], 'tests/page-runner.py');
   assert.ok(!commands[0].command.includes('--software'));
   assert.notEqual(run('--suite', 'unknown', '--plan').status, 0);
+  const editor = JSON.parse(run('--suite', 'editor', '--plan').stdout)[0].command;
+  assert.ok(!editor.includes('--browser'), 'Default editor must use the same Playwright headless browser as other suites');
 });
 
 test('Suite runner propagates child failures instead of publishing a passing summary', () => {
