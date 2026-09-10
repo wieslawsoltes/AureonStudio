@@ -12,6 +12,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
+      # Recovery snapshot for final integration of the saved source delta.
       - run: git archive --format=zip --output=/tmp/aureon-current-source.zip HEAD
       - uses: actions/upload-artifact@v4
         with:
