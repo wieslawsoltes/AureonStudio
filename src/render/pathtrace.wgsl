@@ -1,5 +1,5 @@
 // Surface/volume path tracing and a linked-cell GPU photon map share the same
-// triangles, material graph interpreter, light CDF and BVH.
+// triangles, specialized material graphs, light CDF and BVH.
 struct Node {lower:vec3f,left:u32,upper:vec3f,count:u32};
 struct Light {triangle:u32,cdf:f32,pmf:f32,area:f32};
 struct Photon {p:vec4f,n:vec4f,power:vec4f,incoming:vec4f,next:vec4u};
@@ -40,7 +40,7 @@ var<private> interiorCount:u32;
 fn air()->Interior{return Interior(0.,1.,0.,0.,vec3f(1.),vec3f(0.));}
 fn currentInterior()->Interior{if(interiorCount==0u){return air();}return interiors[interiorCount-1u];}
 fn materialInterior(object:f32,index:u32,m:Material)->Interior {
- return Interior(object,m.params.z,select(0.,max(.001,m.reserved.y),m.reserved.w>0.),clamp(m.reserved.z,-.999,.999),clamp(m.base.rgb,vec3f(0.),vec3f(1.)),graphCode[u32(cam.assetInfo.x)+index].op.xyz);
+ return Interior(object,m.params.z,select(0.,max(.001,m.reserved.y),m.reserved.w>0.),clamp(m.reserved.z,-.999,.999),clamp(m.base.rgb,vec3f(0.),vec3f(1.)),graphInstruction(u32(cam.assetInfo.x)+index).op.xyz);
 }
 fn exitIndex(object:f32)->i32 {for(var i=i32(interiorCount)-1;i>=0;i--){if(interiors[u32(i)].object==object){return i;}}return -1;}
 fn transmittedIOR(object:f32,front:bool,ior:f32)->f32 {if(front){return ior;}let index=exitIndex(object);if(index<0||u32(index)+1u<interiorCount){return currentInterior().ior;}if(index==0){return 1.;}return interiors[u32(index)-1u].ior;}
@@ -69,7 +69,7 @@ fn initializeInteriors(origin:vec3f,enabled:bool){
 }
 struct Region {dimensions:vec3i,kind:u32,data:u32,leaves:u32,scale:f32,majorant:f32,color:vec3f,g:f32,emission:vec3f,replace:bool,worldToIndex:mat4x4f,priority:f32};
 fn region(index:u32)->Region {
- let start=u32(cam.assets.z)+index*3u;let a=graphCode[start];let b=graphCode[start+1u];let c=graphCode[start+2u];
+ let start=u32(cam.assets.z)+index*3u;let a=graphInstruction(start);let b=graphInstruction(start+1u);let c=graphInstruction(start+2u);
  return Region(vec3i(a.op.xyz),u32(a.op.w),u32(a.args.x),u32(a.args.y),a.args.z,a.args.w,a.value.xyz,a.value.w,a.extra.xyz,a.extra.w>0.,mat4x4f(b.op,b.args,b.value,b.extra),c.op.x);
 }
 fn regionPoint(r:Region,p:vec3f)->vec3f{return (r.worldToIndex*vec4f(p,1.)).xyz;}
@@ -148,7 +148,7 @@ fn photonHash(c:vec3i)->u32 {
 fn photonGather(p:vec3f,n:vec3f,wo:vec3f,m:Material)->vec3f {
  let radius=max(.0001,cam.render.z);let cell=vec3i(floor(p/radius));var result=vec3f(0.);
  for(var z=-1;z<=1;z++){for(var y=-1;y<=1;y++){for(var x=-1;x<=1;x++){let c=cell+vec3i(x,y,z);var next=atomicLoad(&photonMap.heads[photonHash(c)]);loop{if(next==0u){break;}let record=photonMap.records[next-1u];next=record.next.x;
-  if(any(vec3i(floor(record.p.xyz/radius))!=c)){continue;}let distance=length(record.p.xyz-p);if(record.p.w==1.&&distance<radius&&dot(n,record.n.xyz)>.85&&abs(dot(n,record.p.xyz-p))<radius*.15){let bs=evaluateBSDF(m,m.base.rgb,n,wo,record.incoming.xyz);result+=record.power.rgb*bs.f*(1.-distance/radius);}
+  if(any(vec3i(floor(record.p.xyz/radius))!=c)){continue;}let distance=length(record.p.xyz-p);if(record.p.w==1.&&distance<radius&&dot(n,record.n.xyz)>.85&&abs(dot(n,record.p.xyz-p))<radius*.15){let bs=evaluateSurfaceBSDF(m,m.base.rgb,n,wo,record.incoming.xyz);result+=record.power.rgb*bs.f*(1.-distance/radius);}
  }}}}
  return result*(3./(PI*radius*radius));
 }
@@ -184,10 +184,10 @@ fn trace(primary:Ray)->vec3f {
   let terminateWithMap=useMap&&(cam.render.x==1.||gatheredBounces>=1u);
   let direct=beta*directSurface(mat,color,p,g,n,wo,hasNext&&!terminateWithMap);radiance+=direct;if(bounce==0u){aovDirect+=direct;}
   if(terminateWithMap){radiance+=beta*photonGather(p,n,wo,mat);break;}if(!hasNext){break;}previousPoint=p;
-  if(mat.pattern.x<0.&&fiberRadius>0.){let wi=sampleFiber(mat,wo);let bs=evaluateBSDF(mat,color,n,wo,wi);if(bs.pdf<=1e-12){break;}beta*=bs.f*abs(dot(n,wi))/bs.pdf;previousPdf=bs.pdf;delta=false;ray=surfaceRay(p,g,wi,mat);gatheredBounces++;}
+  if(FIBERS_ENABLED&&mat.pattern.x<0.&&fiberRadius>0.){let wi=sampleFiber(mat,wo);let bs=evaluateBSDF(mat,color,n,wo,wi);if(bs.pdf<=1e-12){break;}beta*=bs.f*abs(dot(n,wi))/bs.pdf;previousPdf=bs.pdf;delta=false;ray=surfaceRay(p,g,wi,mat);gatheredBounces++;}
   else if(random()<mat.params.y){
    var etaI=currentInterior().ior;if(!front&&exitIndex(t.b.w)<0){etaI=mat.params.z;}let etaT=transmittedIOR(t.b.w,front,mat.params.z);let eta=etaI/etaT;let oriented=select(-g,g,front);let F=dielectricFresnel(clamp(dot(oriented,wo),0.,1.),etaI,etaT);var wi=reflect(ray.d,oriented);
-   if(random()>=F){wi=refract(ray.d,oriented,eta);beta*=eta*eta;let absorption=graphCode[u32(cam.assetInfo.x)+u32(t.a.w)].op.xyz;if(mat.reserved.w<=0.&&all(absorption==vec3f(0.))){beta*=color;}updateInterior(t.b.w,u32(t.a.w),mat,front);}
+   if(random()>=F){wi=refract(ray.d,oriented,eta);beta*=eta*eta;let absorption=graphInstruction(u32(cam.assetInfo.x)+u32(t.a.w)).op.xyz;if(mat.reserved.w<=0.&&all(absorption==vec3f(0.))){beta*=color;}updateInterior(t.b.w,u32(t.a.w),mat,front);}
    ray=offsetRay(p,g,normalize(wi));delta=true;previousPdf=0.;
   }else{
    var wi:vec3f;let ps=.25+.5*mat.params.x;if(random()<ps){let alpha=max(.025,mat.base.w*mat.base.w);let u=min(random(),.999999);let a=random()*2.*PI;let ct=sqrt((1.-u)/(1.+(alpha*alpha-1.)*u));let st=sqrt(max(0.,1.-ct*ct));let h=basis(n)*vec3f(st*cos(a),st*sin(a),ct);wi=reflect(-wo,h);}else{wi=cosineDirection(n);}
@@ -226,8 +226,8 @@ fn photonMain(@builtin(global_invocation_id) id:vec3u) {
   else{
    if(hit.triangle==0xffffffffu){break;}let t=triangles[hit.triangle];let b=vec3f(1.-hit.u-hit.v,hit.u,hit.v);let p=ray.o+ray.d*hit.t;var mat=surfaceMaterial(u32(t.a.w),p,triangleUV(t,b));mat.params.y=max(mat.params.y,mat.reserved.w);let g=normalize(cross(t.b.xyz-t.a.xyz,t.c.xyz-t.a.xyz));let front=dot(g,ray.d)<0.;let n=select(-g,g,front);let wo=-ray.d;setupFiber(t,normalize(t.n0.xyz*b.x+t.n1.xyz*b.y+t.n2.xyz*b.z));
    if(bounce>0u&&mat.params.y<.999){storePhoton(id.x*8u+bounce,p,n,power,wo,1.);}
-   if(mat.pattern.x<0.&&fiberRadius>0.){let wi=sampleFiber(mat,wo);let bs=evaluateBSDF(mat,mat.base.rgb,n,wo,wi);if(bs.pdf<=1e-12){break;}power*=bs.f*abs(dot(n,wi))/bs.pdf;ray=surfaceRay(p,g,wi,mat);}
-   else if(random()<mat.params.y){var etaI=currentInterior().ior;if(!front&&exitIndex(t.b.w)<0){etaI=mat.params.z;}let etaT=transmittedIOR(t.b.w,front,mat.params.z);let F=dielectricFresnel(clamp(dot(n,wo),0.,1.),etaI,etaT);var wi=reflect(ray.d,n);if(random()>=F){wi=refract(ray.d,n,etaI/etaT);let absorption=graphCode[u32(cam.assetInfo.x)+u32(t.a.w)].op.xyz;if(mat.reserved.w<=0.&&all(absorption==vec3f(0.))){power*=mat.base.rgb;}updateInterior(t.b.w,u32(t.a.w),mat,front);}ray=offsetRay(p,g,normalize(wi));}
+   if(FIBERS_ENABLED&&mat.pattern.x<0.&&fiberRadius>0.){let wi=sampleFiber(mat,wo);let bs=evaluateBSDF(mat,mat.base.rgb,n,wo,wi);if(bs.pdf<=1e-12){break;}power*=bs.f*abs(dot(n,wi))/bs.pdf;ray=surfaceRay(p,g,wi,mat);}
+   else if(random()<mat.params.y){var etaI=currentInterior().ior;if(!front&&exitIndex(t.b.w)<0){etaI=mat.params.z;}let etaT=transmittedIOR(t.b.w,front,mat.params.z);let F=dielectricFresnel(clamp(dot(n,wo),0.,1.),etaI,etaT);var wi=reflect(ray.d,n);if(random()>=F){wi=refract(ray.d,n,etaI/etaT);let absorption=graphInstruction(u32(cam.assetInfo.x)+u32(t.a.w)).op.xyz;if(mat.reserved.w<=0.&&all(absorption==vec3f(0.))){power*=mat.base.rgb;}updateInterior(t.b.w,u32(t.a.w),mat,front);}ray=offsetRay(p,g,normalize(wi));}
    else{var wi:vec3f;let ps=.25+.5*mat.params.x;if(random()<ps){let alpha=max(.025,mat.base.w*mat.base.w);let u=min(random(),.999999);let a=random()*2.*PI;let ct=sqrt((1.-u)/(1.+(alpha*alpha-1.)*u));let st=sqrt(max(0.,1.-ct*ct));wi=reflect(-wo,basis(n)*vec3f(st*cos(a),st*sin(a),ct));}else{wi=cosineDirection(n);}let bs=evaluateBSDF(mat,mat.base.rgb,n,wo,wi);if(bs.pdf<=1e-10||dot(n,wi)<=0.){break;}power*=bs.f*abs(dot(n,wi))/bs.pdf;ray=offsetRay(p,g,normalize(wi));}
   }
   if(bounce>=3u){let survive=.8;if(random()>survive){break;}power/=survive;}
@@ -244,7 +244,7 @@ fn sampleFiber(m:Material,woWorld:vec3f)->vec3f {
  let phi=atan2(wo.z,wo.y)+L.phi[p]+dphi;let ci=sqrt(max(0.,1.-si*si));return normalize(F*vec3f(si,ci*cos(phi),ci*sin(phi)));
 }
 fn surfaceRay(p:vec3f,g:vec3f,wi:vec3f,m:Material)->Ray {
- if(m.pattern.x<0.&&fiberRadius>0.&&dot(wi,fiberNormal)<0.){
+ if(FIBERS_ENABLED&&m.pattern.x<0.&&fiberRadius>0.&&dot(wi,fiberNormal)<0.){
   let radial=wi-fiberTangent*dot(wi,fiberTangent);let exitDistance=-2.*fiberRadius*dot(wi,fiberNormal)/max(1e-8,dot(radial,radial));
   return Ray(p+wi*(exitDistance+max(1.,length(p))*2e-4),wi);
  }

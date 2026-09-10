@@ -7,7 +7,7 @@ import {compileGraphs} from './graph.js';
 export const BASE_SURFACE=`fn surfaceMaterial(index:u32,p:vec3f,uv:vec2f)->Material {
  var m=materials[index];m.base=vec4f(baseColor(m,p,uv),m.base.w);m.pattern.x=0.;m.pattern.z=0.;
  /* MATERIAL_CASES */
- if(graphCode[u32(cam.assetInfo.x)+index].op.w>0.){m.pattern.x=-1.;m.pattern.z=f32(index);m.reserved.w=0.;m.params.y=0.;}
+ if(graphInstruction(u32(cam.assetInfo.x)+index).op.w>0.){m.pattern.x=-1.;m.pattern.z=f32(index);m.reserved.w=0.;m.params.y=0.;}
  return m;
 }`;
 export function compileMaterialWGSL(materials){
@@ -20,7 +20,7 @@ export function compileMaterialWGSL(materials){
    const at=(range.offset+j)*16,op=graphs.data[at],c=`c${j}`;
    const reg=k=>{const n=graphs.data[at+4+k];if(!Number.isInteger(n)||n<0||n>=j)throw Error('Invalid material DAG dependency');return `r${n}`;};
    const a=op>2&&op!==100?reg(0):null,b=[3,4,5,6,7,9,12,15].includes(op)?reg(1):null,v=[7,9,12].includes(op)?reg(2):null;
-   lines.push(` let ${c}=graphCode[start+${j}u];`);let expr;
+   lines.push(` let ${c}=graphInstruction(start+${j}u);`);let expr;
    switch(op){
     case 0:expr=`${c}.value`;break;
     case 1:expr='vec4f(uv,0.,1.)';break;
@@ -52,7 +52,8 @@ export function compileMaterialWGSL(materials){
  }
  const source=functions.join('\n')+'\n'+BASE_SURFACE.replace('/* MATERIAL_CASES */',cases.join('\n'));
  if(source.length>2_000_000)throw Error('Generated material shader exceeds source budget');
- return {source,key:source,instructions:total};
+ const fibers=materials.some(m=>!!m.fiber);
+ return {source,key:`fiber:${fibers}\n${source}`,fibers,instructions:total};
 }
 export function specializeMaterialSource(common,materials){const a=common.indexOf('fn surfaceMaterial(');if(a<0)throw Error('Common shader lacks material insertion point');const start=common.indexOf('{',a);let end=start+1,depth=1;for(;depth&&end<common.length;end++){if(common[end]==='{')depth++;else if(common[end]==='}')depth--;}
- if(depth)throw Error('Unbalanced common shader material function');const shader=compileMaterialWGSL(materials);return {...shader,code:common.slice(0,a)+shader.source+common.slice(end)};}
+ if(depth)throw Error('Unbalanced common shader material function');const shader=compileMaterialWGSL(materials);const code=common.slice(0,a)+shader.source+common.slice(end);return {...shader,code:code.replace('const FIBERS_ENABLED:bool=false;',`const FIBERS_ENABLED:bool=${shader.fibers};`)};}
