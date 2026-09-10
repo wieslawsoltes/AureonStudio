@@ -76,6 +76,8 @@ try:
         command('Render','fiber');page.locator('#fiber-enable').check();page.locator('#fiber-long').fill('.45');apply();check('Fiber material reaches the graph-specialized renderer',page.evaluate('aureon.doc.materials[0].fiber.roughness===.45 && aureon.renderer.materialPipelineKey.startsWith("fiber:true")'))
         page.screenshot(path=str(out/'groomed-hair.png'))
         fixture();command('Render','media');page.locator('#volume-cloud').click();apply();check('Sparse density authoring commits and uploads the real volume field',page.evaluate('aureon.doc.volumes[0].grid.blocks.length>0 && aureon.renderer.assets.volumeCount===1'))
+        fixture();command('Render','subsurface');page.locator('#sss-weight').fill('.4');page.locator('#sss-density').fill('3.25');apply()
+        check('Subsurface material authoring remains available beside heterogeneous regions',page.evaluate('aureon.doc.materials[0].subsurface.weight===.4 && aureon.doc.materials[0].subsurface.density===3.25'))
         fixture();command('Render','productionRender');page.locator('#frame-width').fill('32');page.locator('#frame-height').fill('24');page.locator('#frame-samples').fill('2');page.locator('#frame-blur').uncheck();page.locator('#frame-start').click();page.wait_for_function('!aureon.renderLocked && aureon.renderer.samples===2 && aureon.renderer.paused',timeout=120000);cancel()
         command('Render','exportEXR');page.locator('#exr-compression').select_option('ZIP');page.locator('#exr-layout').select_option('multipart');page.locator('#exr-type').select_option('HALF')
         with page.expect_download(timeout=30000) as event:page.locator('#dialog-apply').click()
