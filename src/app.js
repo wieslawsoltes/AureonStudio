@@ -1,3 +1,4 @@
+import { installAdvancedTools } from './ui/advanced.js';
 import { installProductionTools } from './ui/production.js';
 import { History } from './core/history.js';
 import { add, sub, mul, dot, cross, normalize, length, clamp, transformPoint, transformVector, inverse, compose } from './core/math.js';
@@ -48,6 +49,7 @@ class Studio {
         });
         this.commands = this.createCommands();
         installProductionTools(this);
+        installAdvancedTools(this);
         this.worker = new Worker(new URL('./render/bvh-worker.js', import.meta.url), { type: 'module' });
         this.worker.onmessage = e => this.finishBuild(e.data);
         this.worker.onerror = e => {
@@ -151,7 +153,7 @@ class Studio {
                 this.builtRevision = id;
                 if (this.gpuReady) {
                     await this.renderer.device.queue.onSubmittedWorkDone();
-                    this.renderer.setAssets(this.doc);
+                    await this.renderer.setAssets(this.doc);
                     this.renderer.setScene(result, this.pendingBuild.materials);
                 }
                 this.dirty = true;

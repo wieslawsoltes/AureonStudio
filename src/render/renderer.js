@@ -1,7 +1,7 @@
 import {compileSceneAssets} from './assets.js';
 import {RendererError, rendererError, readShader, compileShaderModule, validateResources} from './diagnostics.js';
 import {TextureArray} from '../materials/textures.js';
-import {compileGraphs} from '../materials/graph.js';
+import {compileMaterialWGSL,specializeMaterialSource} from '../materials/wgsl-graph.js';
 import {Denoiser} from './denoiser.js';
 import { cameraFrame } from './camera.js';
 import { rad } from '../core/math.js';
@@ -20,8 +20,11 @@ export class Renderer {
         this.maxPixels = 2073600;
     }
     async init() {
+        const start=performance.now();
         try {
-            return await this.initialize();
+            const result=await this.initialize();
+            this.initializationMilliseconds=performance.now()-start;
+            return result;
         } catch (error) {
             this.initializationError = rendererError(error, this.initStage || 'initialization');
             this.dispose();
@@ -60,9 +63,10 @@ export class Renderer {
         this.format = navigator.gpu.getPreferredCanvasFormat();
         this.context.configure({ device: this.device, format: this.format, alphaMode: 'opaque', usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_DST });
         this.initStage = 'shader';
-        const common = await readShader(new URL('common.wgsl', import.meta.url));
+        const common = this.commonSource = await readShader(new URL('common.wgsl', import.meta.url));
+        this.shaderSources=Object.fromEntries(await Promise.all(['pathtrace.wgsl','display.wgsl','raster.wgsl'].map(async file=>[file,await readShader(new URL(file,import.meta.url))])));
         const results = await Promise.allSettled(['pathtrace.wgsl', 'display.wgsl', 'raster.wgsl'].map(async file =>
-            compileShaderModule(this.device, file, await readShader(new URL(file, import.meta.url)), common + '\n')));
+            compileShaderModule(this.device, file, this.shaderSources[file], common + '\n')));
         const failures = results.filter(result => result.status === 'rejected').map(result => result.reason);
         if (failures.length) {
             const first = rendererError(failures[0], 'shader');
@@ -72,10 +76,15 @@ export class Renderer {
         }
         const [compute, display, raster] = results.map(result => result.value);
         this.initStage = 'pipeline';
+        this.onStatus('Compiling photon pipeline');
         this.photonPipeline = await this.device.createComputePipelineAsync({ label: 'Linked-cell photon emission', layout: 'auto', compute: { module: compute, entryPoint: 'photonMain' } });
+        this.onStatus('Compiling path pipeline');
         this.compute = await this.device.createComputePipelineAsync({ label: 'Aureon Ray integrator', layout: 'auto', compute: { module: compute, entryPoint: 'main' } });
         this.display = await this.device.createRenderPipelineAsync({ label: 'Linear HDR display', layout: 'auto', vertex: { module: display, entryPoint: 'vertexMain' }, fragment: { module: display, entryPoint: 'fragmentMain', targets: [{ format: this.format }] }, primitive: { topology: 'triangle-list' } });
+        this.onStatus('Compiling viewport pipeline');
         this.raster = await this.device.createRenderPipelineAsync({ label: 'Modeling viewport', layout: 'auto', vertex: { module: raster, entryPoint: 'vertexMain' }, fragment: { module: raster, entryPoint: 'fragmentMain', targets: [{ format: this.format }] }, primitive: { topology: 'triangle-list', cullMode: 'none' }, depthStencil: { format: 'depth24plus', depthWriteEnabled: true, depthCompare: 'less' } });
+        this.materialPipelines=new Map([[compileMaterialWGSL([]).key,{photon:this.photonPipeline,compute:this.compute,raster:this.raster}]]);
+        this.materialPipelineKey=compileMaterialWGSL([]).key;
         this.initStage = 'resources';
         await validateResources(this.device, () => {
         this.uniform = this.device.createBuffer({ label: 'Camera and frame', size: 512, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
@@ -117,9 +126,26 @@ export class Renderer {
     makeDisplayGroup(pixels) {
         this.displayGroup=this.device.createBindGroup({layout:this.display.getBindGroupLayout(0),entries:[{binding:0,resource:{buffer:this.uniform}},{binding:3,resource:{buffer:pixels}},{binding:6,resource:{buffer:this.aovBuffer}}]});
     }
-    setAssets(doc) {
-        const key=JSON.stringify([doc.textures||[],doc.materials.map(m=>[m.graph||null,m.absorption||null]),doc.volumes||[],doc.settings.textureResolution||256]);
+    async prepareMaterialPipelines(materials) {
+        const shader=specializeMaterialSource(this.commonSource,materials);
+        if(shader.key===this.materialPipelineKey)return;
+        let pipelines=this.materialPipelines.get(shader.key);
+        if(!pipelines){
+            const start=performance.now();
+            this.onStatus('Compiling material graph pipelines');
+            const [compute,raster]=await Promise.all(['pathtrace.wgsl','raster.wgsl'].map(name=>compileShaderModule(this.device,name,this.shaderSources[name],shader.code+'\n')));
+            const photon=await this.device.createComputePipelineAsync({label:'Graph-specialized photon transport',layout:'auto',compute:{module:compute,entryPoint:'photonMain'}});
+            const trace=await this.device.createComputePipelineAsync({label:'Graph-specialized path transport',layout:'auto',compute:{module:compute,entryPoint:'main'}});
+            const viewport=await this.device.createRenderPipelineAsync({label:'Graph-specialized viewport',layout:'auto',vertex:{module:raster,entryPoint:'vertexMain'},fragment:{module:raster,entryPoint:'fragmentMain',targets:[{format:this.format}]},primitive:{topology:'triangle-list',cullMode:'none'},depthStencil:{format:'depth24plus',depthWriteEnabled:true,depthCompare:'less'}});
+            pipelines={photon,compute:trace,raster:viewport,milliseconds:performance.now()-start};this.materialPipelines.set(shader.key,pipelines);
+            while(this.materialPipelines.size>4)this.materialPipelines.delete(this.materialPipelines.keys().next().value);
+        }
+        this.photonPipeline=pipelines.photon;this.compute=pipelines.compute;this.raster=pipelines.raster;this.materialPipelineKey=shader.key;
+    }
+    async setAssets(doc) {
+        const key=JSON.stringify([doc.textures||[],doc.materials.map(m=>[m.graph||null,m.absorption||null,m.fiber||null]),doc.volumes||[],doc.settings.textureResolution||256]);
         if(key===this.assetKey)return;
+        await this.prepareMaterialPipelines(doc.materials);
         const assets=compileSceneAssets(doc);const replacement=this.buffer(assets.data,'Scene graphs, UDIM tables and density fields');
         try {this.textureArray.upload(assets.sources,doc.settings.textureResolution||256);}catch(e){replacement.destroy();throw e;}
         this.graphBuffer.destroy();this.graphBuffer=replacement;this.assets=assets;this.assetKey=key;this.bind();this.reset();

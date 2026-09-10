@@ -1,3 +1,5 @@
+import {validateFiber} from '../materials/fiber.js';
+import {applyGroom,validateGroom} from '../simulation/groom.js';
 import {validateVolume} from '../volumes/grid.js';
 import {SceneSimulationCache} from '../simulation/scene-world.js';
 import {applyControllers,applyConstraints,validateDependencies} from '../animation/controllers.js';
@@ -130,6 +132,7 @@ export function validateDocument(d) {
     for(const m of d.materials){
         if(m.graph)compileGraph(m.graph);
         if(m.bitmap!==undefined&&(!Number.isInteger(m.bitmap)||!d.textures?.[m.bitmap]))throw Error('Missing material bitmap');
+        if(m.fiber)validateFiber(m.fiber);
         if(m.subsurface){const q=m.subsurface;if(!Number.isFinite(q.weight)||q.weight<0||q.weight>1||!Number.isFinite(q.density)||q.density<=0||!Number.isFinite(q.anisotropy)||Math.abs(q.anisotropy)>=1)throw Error('Invalid subsurface medium');}
         for(const n of m.graph?.nodes||[])if(n.type==='image'&&!d.textures?.[n.texture])throw Error('Shader graph references a missing bitmap');
     }
@@ -139,6 +142,7 @@ export function validateDocument(d) {
         if(o.materialSlots?.some(i=>!Number.isInteger(i)||!d.materials[i]))throw Error('Invalid object material slots');
         if(o.meshCache){const fs=o.meshCache.frames;if(!Array.isArray(fs)||!fs.length||fs.some((f,i)=>!Number.isFinite(f.frame)||i&&f.frame<=fs[i-1].frame||!Array.isArray(f.positions)||f.positions.length!==o.mesh?.positions.length||!f.positions.every(Number.isFinite)))throw Error('Invalid deformation cache');}
         if(o.rig){validateRig(o.rig,o.rig.weights.length/4);if(o.rig.externalJoints?.some(id=>!d.objects.some(x=>x.id===id)))throw Error('Missing external skeleton joint');}
+        if(o.procedural?.groom)validateGroom(o.procedural.groom);
         if(o.procedural?.kind==='hair'&&!d.objects.some(x=>x.id===o.procedural.source&&x.id!==o.id))throw Error('Missing hair source object');
         if(o.morphTargets?.some(m=>!Array.isArray(m)||m.length!==o.mesh?.positions.length||!m.every(Number.isFinite)))throw Error('Invalid morph target');
         for(const t of o.tracks||[]){if(!['translation','rotation','scale','weights'].includes(t.path)||!['STEP','LINEAR','CUBICSPLINE'].includes(t.interpolation)||!Array.isArray(t.times)||!t.times.length||t.times.some((x,i)=>!Number.isFinite(x)||x<0||i&&x<=t.times[i-1])||!Array.isArray(t.values)||!t.values.every(Number.isFinite)||t.values.length!==t.times.length*t.components*(t.interpolation==='CUBICSPLINE'?3:1))throw Error('Invalid imported animation track');}
@@ -199,7 +203,7 @@ export class GeometryCache {
             const key=JSON.stringify([physicsKey,o.type,o.params,o.mesh,o.modifiers,o.rig,o.simulation,o.procedural,o.meshCache,o.morphTargets,o.morphWeights,external,source,((o.rig||o.simulation||o.procedural||o.tracks||o.meshCache)?frame:0)]);
             const old=this.cache.get(o.id);if(old?.key===key)return old.mesh;
             let mesh;
-            if(o.procedural?.kind==='hair') {let curves=generateHair(source,o.procedural);if(o.procedural.dynamics)curves=simulateHair(curves,Math.max(0,frame/fps),o.procedural.dynamics);mesh=curvesToMesh(curves,o.procedural);}
+            if(o.procedural?.kind==='hair') {let curves=generateHair(source,o.procedural);if(o.procedural.groom)curves=applyGroom(curves,o.procedural.groom,{emitter:source});if(o.procedural.dynamics)curves=simulateHair(curves,Math.max(0,frame/fps),o.procedural.dynamics);mesh=curvesToMesh(curves,o.procedural);}
             else if(o.procedural?.kind==='particles')mesh=particlesToMesh(sampleParticles(o.procedural,Math.max(0,frame/fps)));
             else {let base=o.type==='mesh'?validateMesh(o.mesh):createPrimitive(o.type,o.params);
                 if(o.morphTargets){base=structuredClone(base);const weights=sampleObjectTracks(o,frame).morphWeights||o.morphWeights||[];for(let t=0;t<o.morphTargets.length;t++)if(weights[t])for(let i=0;i<base.positions.length;i++)base.positions[i]+=o.morphTargets[t][i]*weights[t];delete base.vertexNormals;}

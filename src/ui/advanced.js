@@ -2,7 +2,7 @@
  * the same History transaction used by the original editor; cancelling a dialog
  * never changes the scene, paint assets, simulation state, or guide data. */
 import {newObject,material,worldMatrix,validateDocument} from '../scene/document.js';
-import {inverse,matMul,transformPoint,transformVector,normalize,sub,add,mul,clamp} from '../core/math.js';
+import {inverse,matMul,transformPoint,transformVector,normalize,sub,add,mul,clamp,srgbToLinear} from '../core/math.js';
 import {cloneMesh,vertex,bounds} from '../geometry/mesh.js';
 import {booleanMesh,transformMesh} from '../geometry/boolean.js';
 import {bevelMesh} from '../geometry/bevel.js';

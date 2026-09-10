@@ -20,7 +20,7 @@ function scene(){const d=emptyDocument();d.camera.target=[0,1,0];d.camera.distan
  add('plane',{width:2,depth:2},'Light',[0,4,0],7,[180,0,0]);return d;}
 let renderer;
 try{
- renderer=window.renderer=await new Renderer(document.querySelector('canvas'),(message,type)=>{if(type==='error')report.errors.push(message);}).init();
+ renderer=window.renderer=await new Renderer(document.querySelector('canvas'),(message,type)=>{report.phase=message;console.log('GPU phase: '+message);if(type==='error')report.errors.push(message);}).init();
  renderer.device.addEventListener('uncapturederror',e=>report.errors.push(e.error.message));
  report.adapter={vendor:renderer.info.vendor,architecture:renderer.info.architecture,description:renderer.info.description};
  check('All raster, path, photon, display and denoise pipelines compile');
