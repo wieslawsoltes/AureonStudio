@@ -1,0 +1,60 @@
+name: Finalize production authoring integration
+on:
+  push:
+    branches: [feat/production-systems-v03]
+    paths: [.github/workflows/finalize-authoring.yml]
+permissions:
+  contents: write
+  actions: write
+jobs:
+  integrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - name: Repair the remaining editor integration regressions
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('src/app.js');s=p.read_text();old='''        this.renderer.sampleStart = 0;
+                  this.renderer.paused = false;
+                  // A production frame''';new='''        this.renderer.sampleStart = 0;
+                  // A frame export temporarily uses compute even in the Model
+                  // workspace. Return to that workspace's actual viewport mode.
+                  if ($('[data-workspace="model"]')?.classList.contains('active'))
+                      this.renderer.mode = 'raster';
+                  this.renderer.paused = false;
+                  // A production frame''';assert old in s;s=s.replace(old,new,1)
+          s=s.replace('solid Boolean and convex bevel commands','exact solid Boolean, segmented bevel and UDIM packing commands').replace('original v0.2 implementation','original v0.3 implementation');p.write_text(s)
+          p=Path('src/ui/production.js');s=p.read_text();old="media:['Volumes / subsurface…','sphere',()=>mediumDialog(app)],";assert old in s;s=s.replace(old,old+"\n        subsurface:['Subsurface / box medium…','sphere',()=>mediumDialog(app)],",1)
+          s=s.replace("Render:['bitmap','shaderGraph','media',","Render:['bitmap','shaderGraph','media','subsurface',",1)
+          s=s.replace('Dynamics solve root-pinned distance constraints; this is not a dedicated fiber-scattering shader.','Dynamics solve root-pinned distance constraints. Render → Fiber scattering enables cylindrical scattering; Animation → Groom hair guides edits root-bound guides.')
+          s=s.replace('The active-medium model does not support overlapping or nested subsurface solids.','Nested closed solids use an interior-medium stack. Use Volume regions for dense or sparse overlapping grid fields; the homogeneous box below remains compatible with existing scenes.')
+          s=s.replace('These media require the path integrator; increase maximum path depth for multiple scattering.','Path tracing and volume photon density estimation both transport these media. This dialog selects path tracing; increase maximum path depth for multiple scattering.')
+          s=s.replace('Photon modes are surface-only, biased density estimators. Final gathering traces an additional surface bounce before querying the map.','Photon modes are biased surface and volume density estimators. Final gathering traces an additional scattering bounce before querying the map.')
+          p.write_text(s)
+          p=Path('tests/authoring.py');s=p.read_text();old="        fixture();command('Render','productionRender');";assert old in s
+          s=s.replace(old,"""        fixture();command('Render','subsurface');page.locator('#sss-weight').fill('.4');page.locator('#sss-density').fill('3.25');apply()
+                  check('Subsurface material authoring remains available beside heterogeneous regions',page.evaluate('aureon.doc.materials[0].subsurface.weight===.4 && aureon.doc.materials[0].subsurface.density===3.25'))
+          """+old,1);p.write_text(s)
+          PY
+      - name: Validate the complete CPU suite and scripts
+        run: |
+          npm test
+          python3 -m py_compile tests/authoring.py
+          git diff --check
+      - name: Commit the editor fixes on the feature branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add src/app.js src/ui/production.js tests/authoring.py
+          git commit -m 'fix(editor): preserve modeling state after exports and restore subsurface controls'
+          git push origin HEAD:feat/production-systems-v03
+      - name: Execute all real GPU, authoring and independent codec suites
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run webgpu.yml --repo "$GITHUB_REPOSITORY" --ref feat/production-systems-v03
