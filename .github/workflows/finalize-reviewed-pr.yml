@@ -1,0 +1,194 @@
+name: Finalize verified production-systems integration
+on:
+  push:
+    branches: [feat/production-systems-v03]
+    paths: [.github/workflows/finalize-reviewed-pr.yml]
+  workflow_dispatch:
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+  statuses: write
+concurrency:
+  group: aureon-reviewed-pr-finalization
+  cancel-in-progress: false
+jobs:
+  finalize:
+    if: github.repository == 'wieslawsoltes/AureonStudio' && github.ref == 'refs/heads/feat/production-systems-v03'
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TARGET_BRANCH: feat/production-systems-v03
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - name: Confirm the requested PR and preserve its exact head
+        run: |
+          mkdir -p test-results/finalization
+          gh api repos/$GITHUB_REPOSITORY/pulls/1 > test-results/finalization/pr-before.json
+          python3 - <<'PY'
+          import json, os, pathlib
+          pr=json.loads(pathlib.Path('test-results/finalization/pr-before.json').read_text())
+          assert pr['state']=='open' and not pr['merged'], 'PR is no longer open'
+          assert pr['head']['repo']['full_name']==os.environ['GITHUB_REPOSITORY']
+          assert pr['head']['ref']==os.environ['TARGET_BRANCH'] and pr['base']['ref']=='main'
+          assert pr['head']['sha']==os.environ['GITHUB_SHA'], 'A newer source revision exists; do not overwrite it'
+          for name in ['src/materials/wgsl-graph.js','src/render/renderer.js','tests/gpu-regression.py','.github/workflows/webgpu.yml']:
+              assert pathlib.Path(name).is_file(), 'Recovered source is incomplete: '+name
+          PY
+      - name: Repair the recovered frame-timing typo and check source whitespace
+        run: |
+          python3 - <<'PY'
+          import pathlib
+          p=pathlib.Path('src/render/renderer.js')
+          s=p.read_text()
+          if 'performance.now.now()' in s:
+              p.write_text(s.replace('performance.now.now()', 'performance.now()'))
+          p=pathlib.Path('src/render/common.wgsl')
+          s=p.read_text()
+          p.write_text('\n'.join(line.rstrip() for line in s.splitlines())+'\n')
+          PY
+          git diff --check
+      - name: Run every CPU, HTTP, codec and packaging regression
+        run: |
+          set -o pipefail
+          npm test | tee test-results/finalization/cpu-tests.tap
+          python3 - <<'PY'
+          import pathlib,re
+          text=pathlib.Path('test-results/finalization/cpu-tests.tap').read_text()
+          def value(name):
+              found=re.search(r'^# '+name+r' (\d+)\s*$',text,re.M)
+              assert found, 'Missing TAP '+name
+              return int(found.group(1))
+          assert value('tests')>=240, 'Recovered regression tests are missing'
+          assert value('fail')==0 and value('cancelled')==0 and value('skipped')==0
+          PY
+      - name: Install the declared browser test environment
+        run: |
+          python3 -m pip install -r requirements-dev.txt
+          python3 -m playwright install --with-deps chromium
+      - name: Execute all existing real WebGPU and interactive-editor gates without modification
+        run: |
+          python3 -u - <<'PY'
+          import json,pathlib,re,shlex,subprocess
+          source=pathlib.Path('.github/workflows/webgpu.yml').read_text()
+          commands=[]
+          for line in source.splitlines():
+              match=re.search(r'\bpython3\s+(tests/[A-Za-z0-9_./-]+\.py(?:\s+[^\r\n]*)?)$',line.strip())
+              if not match: continue
+              args=shlex.split(match.group(1))
+              p=pathlib.PurePosixPath(args[0])
+              assert not p.is_absolute() and '..' not in p.parts and p.parts[0]=='tests'
+              assert pathlib.Path(p).is_file()
+              assert not any(arg in [';', '&&', '||', '|', '>', '&'] for arg in args)
+              command=['python3',*args]
+              if command not in commands: commands.append(command)
+          assert any(c[1]=='tests/gpu-regression.py' for c in commands), 'The real WebGPU gate was not found'
+          assert len(commands)>=2, 'The interactive-editor gate was not found'
+          report=[]
+          output=pathlib.Path('test-results/finalization/browser-gates.json')
+          for command in commands:
+              print('Executing:',shlex.join(command),flush=True)
+              completed=subprocess.run(command,timeout=900)
+              report.append({'command':command,'returncode':completed.returncode})
+              output.write_text(json.dumps(report,indent=2)+'\n')
+              if completed.returncode: raise SystemExit(completed.returncode)
+          PY
+      - name: Update integration status after successful execution and remove obsolete recovery jobs
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,os,pathlib,re,subprocess
+          root=pathlib.Path('.')
+          tap=(root/'test-results/finalization/cpu-tests.tap').read_text()
+          count=int(re.search(r'^# pass (\d+)$',tap,re.M).group(1))
+          run=f'https://github.com/{os.environ["GITHUB_REPOSITORY"]}/actions/runs/{os.environ["GITHUB_RUN_ID"]}'
+          text=f'''# Production-systems integration status\n\nThe recovered authoring and graph-specialized WGSL sources are integrated with the existing engine. Validation for this integration ran {count} CPU/HTTP/codec/packaging tests and every real WebGPU and interactive-editor command declared by `.github/workflows/webgpu.yml`, without changing or skipping those gates. Evidence is retained by [the finalization run]({run}). WebGPU execution uses the software adapter requested by the existing test runner; it is not a hardware-performance measurement.\n\n## Integrated development scope\n\nThis branch includes the segmented bevel and exact-rational CSG work, controller/constraint/retargeting modules, shared scene dynamics and CPU fluid simulation, UDIM and painting tools, grooming and fiber scattering, density-field and nested-medium transport, compressed/multipart EXR, durable render-coordinator storage, and graph-specialized material pipelines. Passing finite regression fixtures does not certify arbitrary geometry, arbitrary scenes, or production parity.\n\n## Remaining compatibility and algorithm limits\n\nThere is no claim of complete USD, FBX, Alembic, OpenVDB `.vdb`, `.max`, or `.mi` compatibility. An isolated codec build is not an integrated browser importer. Bevel topology coverage is finite; general concave dynamic-body collision and fully coupled fluid/cloth dynamics are not certified. Fluids remain CPU-based. Photon-density estimation remains biased. Tests using the project's own codecs are not independent external-format certification.\n\n## Publication gate\n\nThe PR is merged only after CPU and actual browser gates succeed on the integrated source. Pages then runs its separate GPU-gated deployment and live-byte verification against the merged revision. A failed gate stops finalization rather than publishing a substitute renderer.\n'''
+          (root/'docs/INTEGRATION-STATUS.md').write_text(text)
+          notice='> Current integration status: see [INTEGRATION-STATUS.md](INTEGRATION-STATUS.md). The version-specific report below describes its original release, not later validation.\n\n'
+          for name in ['FEATURES.md','TESTING.md']:
+              p=root/'docs'/name
+              if p.is_file() and 'Current integration status:' not in p.read_text(): p.write_text(notice+p.read_text())
+          p=root/'README.md'
+          notice='> Production-systems integration and current validation: [integration status](docs/INTEGRATION-STATUS.md). Older version-specific statements below are historical.\n\n'
+          if 'Production-systems integration and current validation:' not in p.read_text(): p.write_text(notice+p.read_text())
+          obsolete=['apply-production.yml','diagnose-pipelines.yml','interop-sources.yml','locate-compiler.yml','optimize-textures.yml','quick-pipeline.yml','repair-v02.yml','source-snapshot.yml','integrate-pending.yml','finalize-reviewed-pr.yml']
+          for name in obsolete:
+              p=root/'.github/workflows'/name
+              if p.is_file(): p.unlink()
+          tracked=subprocess.check_output(['git','ls-files','-z']).decode().split('\0')
+          names=sorted(set(p for p in tracked if p and p!='MANIFEST.sha256' and not p.startswith('test-results/') and (root/p).is_file())|{'docs/INTEGRATION-STATUS.md'})
+          (root/'MANIFEST.sha256').write_text(''.join(hashlib.sha256((root/name).read_bytes()).hexdigest()+'  '+name+'\n' for name in names))
+          PY
+          git diff --check
+          npm test
+          npm run build:pages
+      - name: Commit the complete tested integration without overwriting concurrent work
+        id: source
+        run: |
+          remote=$(git ls-remote origin refs/heads/$TARGET_BRANCH | cut -f1)
+          test "$remote" = "$GITHUB_SHA"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- src/render/renderer.js src/render/common.wgsl README.md docs/FEATURES.md docs/TESTING.md docs/INTEGRATION-STATUS.md MANIFEST.sha256
+          git add -u -- .github/workflows
+          git commit -m 'fix: finalize tested production authoring integration and document actual compatibility'
+          git push origin HEAD:$TARGET_BRANCH
+          revision=$(git rev-parse HEAD)
+          echo "sha=$revision" >> "$GITHUB_OUTPUT"
+          gh api --method POST repos/$GITHUB_REPOSITORY/statuses/$revision -f state=success -f context=aureon/verified-integration -f description='CPU and unchanged real WebGPU/editor gates passed' -f target_url="https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+      - name: Merge only the exact tested head of PR 1
+        id: merge
+        env:
+          TESTED_SHA: ${{ steps.source.outputs.sha }}
+        run: |
+          actual=$(gh api repos/$GITHUB_REPOSITORY/pulls/1 --jq .head.sha)
+          test "$actual" = "$TESTED_SHA"
+          gh pr ready 1 --repo "$GITHUB_REPOSITORY"
+          gh pr merge 1 --repo "$GITHUB_REPOSITORY" --merge --match-head-commit "$TESTED_SHA"
+          gh api repos/$GITHUB_REPOSITORY/pulls/1 > test-results/finalization/pr-after.json
+          python3 - <<'PY'
+          import json,os,pathlib
+          pr=json.loads(pathlib.Path('test-results/finalization/pr-after.json').read_text())
+          assert pr['merged'] and pr['merge_commit_sha'], 'GitHub has not confirmed the merge'
+          with open(os.environ['GITHUB_OUTPUT'],'a') as f:f.write('sha='+pr['merge_commit_sha']+'\n')
+          PY
+      - name: Run and verify the merged Pages deployment
+        env:
+          MERGED_SHA: ${{ steps.merge.outputs.sha }}
+        run: |
+          gh workflow run pages.yml --repo "$GITHUB_REPOSITORY" --ref main
+          python3 -u - <<'PY'
+          import json,os,pathlib,subprocess,time,urllib.request
+          repo=os.environ['GITHUB_REPOSITORY']; sha=os.environ['MERGED_SHA']; run_id=None
+          for attempt in range(60):
+              data=json.loads(subprocess.check_output(['gh','api',f'repos/{repo}/actions/workflows/pages.yml/runs?head_sha={sha}&event=workflow_dispatch&per_page=5']))
+              if data['workflow_runs']:
+                  run_id=data['workflow_runs'][0]['id'];break
+              time.sleep(2)
+          assert run_id, 'Merged Pages workflow did not start'
+          subprocess.run(['gh','run','watch',str(run_id),'--repo',repo,'--exit-status'],check=True,timeout=1200)
+          url='https://wieslawsoltes.github.io/AureonStudio/deployment.json?revision='+sha
+          with urllib.request.urlopen(url,timeout=30) as response:
+              assert response.status==200
+              metadata=json.load(response)
+          assert metadata['commit']==sha, 'Live site is not the merged revision'
+          report={'merged':True,'commit':sha,'pagesRun':run_id,'liveMetadata':metadata,'application':'https://wieslawsoltes.github.io/AureonStudio/'}
+          pathlib.Path('test-results/finalization/publication.json').write_text(json.dumps(report,indent=2)+'\n')
+          print(json.dumps(report,indent=2))
+          PY
+      - name: Retain all validation and publication evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aureon-finalization-evidence
+          path: |
+            test-results/finalization/
+            test-results/gpu/
+          if-no-files-found: error
+          retention-days: 30
