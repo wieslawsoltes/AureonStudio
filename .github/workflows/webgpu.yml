@@ -29,15 +29,7 @@ jobs:
         env:
           SUITE: ${{ matrix.suite }}
         run: |
-          case "$SUITE" in
-            transport) python3 tests/gpu-regression.py --software --baseline-only --output test-results/gpu/transport ;;
-            advanced) python3 tests/page-runner.py --software ;;
-            editor)
-              BROWSER=$(python3 -c 'from playwright.sync_api import sync_playwright; p=sync_playwright().start(); print(p.chromium.executable_path); p.stop()')
-              python3 tests/browser.py --software --browser "$BROWSER" --output test-results/gpu/editor ;;
-            authoring) python3 tests/authoring.py --software ;;
-            *) exit 1 ;;
-          esac
+          python3 tests/run-webgpu.py --suite "$SUITE" --software
       - name: Retain actual GPU execution evidence
         if: always()
         uses: actions/upload-artifact@v4

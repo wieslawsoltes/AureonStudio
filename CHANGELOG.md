@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0 — Integrated production systems
+
+- Recover and commit all pending graph-specialized shader and authoring sources.
+- Resolve material/UDIM GPU compilation expansion with straight-line graph code, fiber specialization, vec4 asset loads and shared eight-tap filtering.
+- Integrate segmented/reflex-edge bevels, exact-rational BSP, UDIM painting/packing, controllers/constraints/retargeting, shared dynamics, CPU fluids, grooming/fiber shading, density regions, nested interiors, and durable rendering.
+- Add compressed/multipart mixed-type EXR with reciprocal official OpenEXR fixtures and an actual coordinator SIGKILL/restart test.
+- Retain four mandatory real WebGPU/editor suites. Replace shell/YAML command extraction with an explicit argument-vector runner and test its failure propagation.
+- Remove completed self-modifying recovery/finalization workflows, the old repair script and stale transfer manifest. Keep normal GPU-gated Pages publication and exact live-asset checksums.
+- Update feature, architecture, format, workflow and validation documentation; unsupported interchange and production limits remain explicit.
+
 ## 0.2.0 — integrated development build
 
 Added the modeling, UV, deformation, simulation, shading, transport, output, coordination and interchange modules enumerated in `docs/FEATURES.md`, with actual editor commands rather than disabled feature placeholders.

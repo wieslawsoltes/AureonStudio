@@ -4,3 +4,5 @@ __pycache__/
 test-results/
 .DS_Store
 _site/
+.aureon-render-state/
+.publication/

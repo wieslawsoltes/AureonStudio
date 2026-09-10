@@ -1,8 +1,5 @@
-name: Build pinned USD browser codec
+name: Experimental pinned USD codec (not integrated)
 on:
-  push:
-    branches: [feat/production-systems-v03]
-    paths: [.github/workflows/build-usd.yml]
   workflow_dispatch:
 permissions:
   contents: read

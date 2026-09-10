@@ -1,88 +1,37 @@
-# Architecture — v0.2
+# Architecture — v0.3.0
 
-## Shared pipeline
+## Shared state and evaluation
 
-```text
-index.html / styles.css
-    app.js + ui/{inspector,editors,production}.js
-             │ commands, dialogs, history
-             ▼
-    scene/document.js — canonical JSON + GeometryCache
-       ├─ geometry/{mesh,primitives,modifiers,boolean,bevel,uv}.js
-       ├─ animation/{rig,tracks}.js
-       └─ simulation/{physics,curves}.js
-             │ evaluated polygon meshes
-             ▼
-    render/compile.js — world triangles, normals, UVs, material slots
-       ├─ materials/{graph,textures}.js
-       └─ render/bvh-worker.js — SAH build / refit + light CDF
-             │
-    render/renderer.js — WebGPU lifetime / bindings / display / readback
-       ├─ common.wgsl — ABI, BSDF, texture/graph interpreter
-       ├─ raster.wgsl — vertex/fragment preview
-       ├─ pathtrace.wgsl — path/volume transport + photon dispatch
-       ├─ denoiser.js / denoise.wgsl — separate a-trous buffers
-       └─ display.wgsl — selected AOV and tone-mapped output
+`index.html`, `styles.css` and `src/app.js` host the editor. `ui/production.js` and `ui/advanced.js` install authoring commands on the existing command/menu system. Dialogs edit drafts and commit through the same `History` transactions as modeling. Cancelling a paint/groom/constraint draft does not alter the canonical document. Native JSON, not GPU buffers, is the source of truth. IndexedDB recovery is a local recovery slot, not project version control.
 
-    render/production.js — shutter evaluation and deterministic tiles
-    io/{formats,gltf,interchange,exr,png}.js — independent codecs
-    distributed/queue.js — Node-only scheduler and compensated merger
-    scripts/render-server.mjs ⇄ distributed/worker-client.js
-```
+`scene/document.js` owns validation, world transforms and `GeometryCache`. Source meshes, morphs, modifiers, rigging, simulation and procedural geometry feed `render/compile.js`. Exact-rational Boolean operations live in `geometry/exact*.js`; the ordinary mesh representation and renderer are floating-point. `geometry/bevel.js` constructs segmented topological profiles with explicit unsupported-input errors. UV seams, conformal charts and UDIM packing are reusable modules.
 
-`src/index.js` exports browser-safe library namespaces without creating the application. The Node-only queue is deliberately not re-exported from that entry point. There are no runtime framework dependencies.
+`animation/controllers.js` evaluates bounded controller expressions and ordered constraints; dependency cycles reject. Retargeting bakes bind-space deltas. `simulation/scene-world.js` coordinates scene-level rigid bodies, colliders, cloth and fluids. It replaces the former per-object rigid-world isolation. Fractional sample evaluation preserves integer checkpoints; backwards seeks restart deterministically. Fluids and meshing remain CPU work. These systems have explicit budgets and finite robustness coverage, not unbounded production guarantees.
 
-## Canonical state and edits
+## Geometry to GPU
 
-Native objects reference parents by ID and materials by index. GPU buffers and caches are transient. Shared JSON data drives editor controls, CPU geometry, viewport and production renderer; there is no separate mock renderer scene. Scene validation checks key structures, transforms, hierarchy cycles, materials, supported modifiers and added rig/cache/texture/graph fields, but is not a full hostile-asset sandbox or schema certification.
+The triangle compiler applies hierarchical transforms, inverse-transpose normals, mirrored winding, UVs, material slots, object/polygon IDs and fiber metadata. Local triangulation is cached by evaluated-mesh identity. A worker builds/refits a binned SAH BVH and emissive-light distribution. Stale interactive worker results are discarded by revision. Production rendering reuses static geometry and evaluates/refits at changing shutter times; it is not a screen-space blur or a motion-BLAS implementation.
 
-History transactions snapshot before/after JSON and roll back synchronous errors. History retains at most 60 transactions and approximately 64 MiB of snapshot text, keeping the newest transaction. Recovery is a single debounced IndexedDB slot, not version control. New rigs, textures, graphs, procedural settings and caches participate in these transactions.
+`render/renderer.js` owns device lifetime, pipelines, bindings, accumulation, display and readback. Initialization separates capability, asset, shader, pipeline and resource failures; source-mapped diagnostics do not mislabel compiler failures as missing hardware. GPU queue fences bound outstanding work. Fixed render dimensions fail when over budget; interactive dimensions may scale to fit the pixel allocation budget. See [FORMAT.md](FORMAT.md) for layouts.
 
-## Geometry and deformation
+## Material compilation and transport
 
-`GeometryCache` evaluates source geometry → morph displacement → modifiers → skinning → simulation. Procedural hair/particles provide an alternative mesh source. An explicit baked deformation cache overrides resulting positions. Cache keys include source data, deformation settings/time and external skeleton matrices. Re-entrant procedural dependencies reject rather than recur forever.
+`materials/graph.js` validates and packs a bounded DAG. `materials/wgsl-graph.js` emits straight-line WGSL from its topology. Numeric values remain in the packed buffer, permitting pipeline reuse for value edits. Changed topology or fiber usage selects specialized pipelines; the cache retains at most four entries. The default no-graph path remains available.
 
-UV seam splitting uses corner-sector connectivity across uncut edges. This correctly separates two sides of a cut even when they remain in one face-connected chart. Automatic seam selection retains a smooth dual spanning forest. LSCM then solves sparse normal equations with conjugate gradients and pinned anchors; chart packing is deterministic shelf packing. Rigging uses normalized four-weight influences and inverse binds; imported glTF joints are external scene objects, while authored chain bones are local rig records.
+`render/assets.js` packs graph values, logical texture descriptors, direct UDIM tile tables, volume records, sparse density leaves and material absorption/fiber records into one storage buffer. `common.wgsl` reads it as vec4 values, preserving the 64-byte instruction ABI. A shared bounded loop performs all eight UDIM trilinear taps. This avoids the former dynamic-interpreter and repeated-inlining compilation explosion without replacing texture sampling with a mock.
 
-Physics uses bounded fixed steps and object-local coordinates. Integer checkpoints are cached; fractional samples save/advance/read/restore state. This avoids order-dependent cache corruption during shutter integration. Backwards seeks restart. The solver library supports multiple bodies in a `RigidWorld`; editor attachment currently uses one world per rigid object.
+`raster.wgsl` draws the modeling viewport. `pathtrace.wgsl` runs path and photon entry points, including emissive/environment sampling, MIS, glass, density-region tracking, nested interiors and fiber lobes. Transport budget overflow is reported rather than silently presented as valid output. Photon density estimation is biased and remains explicitly described as such.
 
-The triangle compiler applies hierarchical world transforms, inverse-transpose normals, mirrored-winding corrections, UVs, object/polygon IDs and per-face material slots. A `WeakMap` caches local triangulation/normals by evaluated-mesh identity. Geometry evaluation/compilation remains CPU work; neither is a GPU mesh builder.
+Beauty and AOVs are float32 accumulations. `denoise.wgsl` writes separate guided-filter buffers. `display.wgsl` maps an AOV/beauty view into a retained color texture; PNG capture reads that texture rather than an expired presentation texture. PFM/EXR read unclamped float data. Editing after production rendering restores the interactive size, camera/scene state and accumulation lifecycle.
 
-## Acceleration and scheduling
+## Files, persistence and service boundary
 
-The 12-bin SAH BVH uses adjacent sibling nodes, maximum depth 48 and a 64-entry WGSL traversal stack. Scene updates regenerate light probabilities. Interactive worker results carry revisions and stale builds are discarded. Refit quality/generation limits bound degradation; the production helper uses a 1.5× original quality threshold or 64 refits before rebuilding. Empty scenes bypass refitting.
+`io/formats.js`, `gltf.js` and `interchange.js` implement the documented interchange subsets. `io/exr-advanced.js` adds flat scanline compression and multipart encoding/decoding. No optional codec experiment is advertised as a browser importer. Browser modules have no runtime npm/CDN dependency; `src/index.js` does not launch the editor.
 
-Production rendering does not rebuild a static scene for each sample. At changing shutter times it evaluates actual geometry and refits or builds acceleration, preserving radiance accumulation. There is no BLAS/TLAS instancing or motion-BVH shortcut. Renderer queue fences bound outstanding work and protect buffer replacement. Reported submission-to-completion time is not a hardware timestamp query.
+The Node-only `distributed/durable-queue.js` extends the scheduler with checksummed fsync-backed log records, atomic checkpoints, single-writer ownership and restart recovery. Claims are transient; acknowledged completions preserve duplicate identity and compensated sums. A process-kill HTTP test exercises the boundary between acknowledgement and restart. Persistence uses Node/V8 serialization and is not a cross-version archival format or a distributed consensus service.
 
-## GPU state
+## Validation and deployment
 
-The main path shader consumes seven storage buffers in group 0 and one graph buffer in group 1. Texture arrays and their sampler also occupy group 1. Device allocation limits are checked; fixed-size images fail explicitly when too large. Interactive dimensions can scale to fit the pixel budget. Camera fields use 288 bytes in a 512-byte uniform allocation. See `FORMAT.md` for layouts.
+`tests/run-webgpu.py` contains explicit argument vectors for the four native-browser suites. The CI matrix invokes this same runner; it never parses YAML or shell fragments into commands. Existing renderer tests and independent OpenEXR checks remain required. One-off self-modifying repair/finalization workflows and the obsolete transfer manifest are removed. `pages.yml` generates fresh checksums from its tested artifact and verifies the exact deployed revision and files.
 
-Linear float32 beauty and five vec4 AOV blocks accumulate independently of display mapping. Denoising uses separate ping-pong buffers. The display pass selects beauty/AOV visualization and writes a retained color texture. PNG capture reads that texture; HDR/EXR read float buffers. Raw beauty is not replaced by denoised values or the display transform.
-
-## Light transport paths
-
-Surface tracing retains Lambert/GGX, ideal dielectric sampling, emissive/sky next-event estimation, power-heuristic MIS and Russian roulette. Graph evaluation resolves a bounded material record at a surface hit. The world medium is one homogeneous box; interior SSS tracks one homogeneous closed solid. The implementation is nonspectral, single-active-medium and not qualified against a reference transport integrator.
-
-Photon emission and tracing use a separate compute entry point. A bounded array holds up to eight records per emitted photon; 4,096 atomic cell heads reference linked records. Gathering verifies spatial cells, distance and normal alignment to reject hash collisions and reduce cross-surface leakage. First-hit direct deposits are omitted; direct light is sampled separately. Final gathering extends the camera path once before density estimation. The estimator is biased and excludes media.
-
-## Distributed execution
-
-A submitted job copies/validates the scene, hashes it, enumerates bounded tile/sample batches and allocates accumulation. A worker claims a lease, renders the scene in its browser, heartbeats and returns little-endian float32 beauty/AOV records. The coordinator checks the lease and all values before merging. Duplicate completion is idempotent. Float64 compensated accumulation merges weighted sample means; object IDs use a nonaveraged sample label. Expired leases requeue. Cancellation stops new work; purge frees memory.
-
-No server GPU, remote shell, external-scene downloader, plug-in executor or cloud provisioning is hidden in this path. Localhost binding and bearer authentication are defaults. Jobs are not persisted. A trusted TLS reverse proxy is required for remote deployment. The HTTP scheduling/merge path was tested; actual distributed GPU execution was not.
-
-## Verification boundary
-
-All changed GPU paths remain uncompiled/unexecuted in the current build environment because managed Chromium denies navigation. The source includes an executable regression page for a supported environment. CPU and offline UI results cannot establish GPU numerical correctness or speed. Archived v0.1 shader results are historical only.
-
-## Primary conceptual/specification references
-
-- WebGPU: https://www.w3.org/TR/webgpu/
-- WGSL: https://www.w3.org/TR/WGSL/
-- glTF 2.0: https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html
-- OpenEXR file layout: https://openexr.com/en/latest/OpenEXRFileLayout.html
-- PBRT volume scattering: https://pbr-book.org/3ed-2018/Volume_Scattering
-- PBRT subsurface scattering: https://pbr-book.org/3ed-2018/Light_Transport_II_Volume_Rendering/Subsurface_Scattering
-
-These references describe techniques and formats; they are not independent validation of this implementation. No external SDK implementation is bundled.
+See [TESTING.md](TESTING.md) for the evidence, [FEATURES.md](FEATURES.md) for limitations, and [PRODUCTION.md](PRODUCTION.md) for the UI workflows.
