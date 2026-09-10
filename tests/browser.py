@@ -17,7 +17,7 @@ from playwright.sync_api import sync_playwright
 ROOT = Path(__file__).resolve().parents[1]
 parser = argparse.ArgumentParser()
 parser.add_argument('--url', default='http://localhost:4173')
-parser.add_argument('--browser', default=os.environ.get('CHROMIUM_PATH', '/usr/bin/chromium'))
+parser.add_argument('--browser', default=os.environ.get('CHROMIUM_PATH'))
 parser.add_argument('--headed', action='store_true')
 parser.add_argument('--software', action='store_true')
 parser.add_argument('--output', default=str(ROOT / 'test-results'))
@@ -43,7 +43,7 @@ try:
         flags = ['--no-sandbox', '--enable-unsafe-webgpu']
         if args.software:
             flags += ['--use-angle=swiftshader', '--enable-features=Vulkan', '--disable-vulkan-surface', '--use-vulkan=swiftshader']
-        browser = p.chromium.launch(executable_path=args.browser, headless=not args.headed, args=flags)
+        browser = p.chromium.launch(headless=not args.headed, args=flags, **({'executable_path': args.browser} if args.browser else {}))
         report['browserVersion'] = browser.version
         context = browser.new_context(viewport={'width': 1536, 'height': 1024}, device_scale_factor=1, accept_downloads=True)
         page = context.new_page()
@@ -54,6 +54,29 @@ try:
         check('Native WebGPU initialization and all WGSL pipelines', page.evaluate('aureon.gpuReady'))
         def settled():
             page.wait_for_function('aureon.compiled && aureon.builtRevision === aureon.revision && !aureon.building && !aureon.needsBuild && !aureon.renderer.busy', timeout=45000)
+        def check_presentation(name):
+            # Queue completion alone does not prove the canvas reached the compositor.
+            page.wait_for_function('aureon.renderer.colorTexture && aureon.renderer.scene && !aureon.renderer.busy && !aureon.dirty && aureon.renderer.scene.triangles.length === aureon.compiled.triangles.length', timeout=45000)
+            page.evaluate('()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))')
+            reference = page.evaluate('''async()=>{
+                const image=await aureon.renderer.capturePNG();
+                return await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(image);});
+            }''')
+            screenshot = page.locator('#gpu-canvas').screenshot(path=str(out / (name + '-canvas.png')))
+            metrics = page.evaluate('''async({reference,presented})=>{
+                const read=async url=>{
+                    const image=await createImageBitmap(await (await fetch(url)).blob());
+                    const c=new OffscreenCanvas(64,64),ctx=c.getContext('2d');
+                    // The central image excludes viewport labels and corner overlays.
+                    ctx.drawImage(image,image.width*.12,image.height*.2,image.width*.76,image.height*.6,0,0,64,64);
+                    const data=ctx.getImageData(0,0,64,64).data;image.close();return data;
+                };
+                const [a,b]=await Promise.all([read(reference),read(presented)]);
+                let error=0,mean=0,second=0,n=0;
+                for(let i=0;i<a.length;i++)if(i%4!==3){const v=a[i]/255;error+=Math.abs(a[i]-b[i])/255;mean+=v;second+=v*v;n++;}
+                mean/=n;return {meanAbsoluteError:error/n,referenceMean:mean,referenceVariance:second/n-mean*mean};
+            }''', {'reference': reference, 'presented': 'data:image/png;base64,' + base64.b64encode(screenshot).decode()})
+            check(name + ' canvas presentation matches retained GPU pixels', metrics['meanAbsoluteError'] < .08 and metrics['referenceVariance'] > .002, metrics)
         def command(menu, name):
             page.locator(f'[data-menu="{menu}"]').click()
             page.locator(f'#menu-popup [data-command="{name}"]').click()
@@ -64,6 +87,7 @@ try:
         settled()
         report['adapter'] = page.evaluate('({vendor:aureon.renderer.info.vendor,architecture:aureon.renderer.info.architecture,description:aureon.renderer.info.description})')
         check('Demo compiles and renders 8,138 real triangles', page.evaluate('aureon.compiled.triangles.length/32') == 8138)
+        check_presentation('Modeling')
         page.screenshot(path=str(out / 'modeling.png'), full_page=True)
 
         # Create with an actual UI button, inspect its numeric transform, undo/redo.
@@ -205,6 +229,7 @@ try:
             command('File','exportHDR')
         pfm_path=out/'render.pfm';info.value.save_as(pfm_path)
         check('PFM export preserves float32 linear radiance', pfm_path.read_bytes().startswith(b'PF\n') and pfm_path.stat().st_size>metrics['width']*metrics['height']*12)
+        check_presentation('Path-tracing')
         page.screenshot(path=str(out/'path-tracing.png'),full_page=True)
 
         page.evaluate('aureon.renderer.paused=true;aureon.doc.camera.yaw+=.1;aureon.cameraChanged()')
