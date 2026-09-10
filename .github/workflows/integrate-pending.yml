@@ -44,6 +44,10 @@ jobs:
               if actual != digest:
                   raise SystemExit(f'Hash mismatch for {name}: {actual} != {digest}')
           print(f'All {len(expected)} recovered files match the locally tested source.')
+          # The recovered common shader has a whitespace-only line. Normalize
+          # formatting after proving byte-exact recovery, before running tests.
+          shader = root / 'src/render/common.wgsl'
+          shader.write_text('\n'.join(line.rstrip() for line in shader.read_text().splitlines()) + '\n')
           PY
       - name: Run CPU and deployment packaging regressions
         run: |
