@@ -6,6 +6,11 @@ permissions:
   contents: read
 jobs:
   webgpu:
+    name: WebGPU · ${{ matrix.suite }}
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [transport, advanced, editor, authoring]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -20,17 +25,49 @@ jobs:
         run: |
           python3 -m pip install -r requirements-dev.txt
           python3 -m playwright install --with-deps chromium
-      - name: Execute real WGSL, transport, example scenes and startup failure tests
-        run: python3 tests/gpu-regression.py --software
-      - name: Exercise the editor, files, animation and production-to-modeling transitions
+      - name: Execute the native WebGPU suite
+        env:
+          SUITE: ${{ matrix.suite }}
         run: |
-          BROWSER=$(python3 -c 'from playwright.sync_api import sync_playwright; p=sync_playwright().start(); print(p.chromium.executable_path); p.stop()')
-          python3 tests/browser.py --software --browser "$BROWSER" --output test-results/gpu/editor-regression
+          case "$SUITE" in
+            transport) python3 tests/gpu-regression.py --software --baseline-only --output test-results/gpu/transport ;;
+            advanced) python3 tests/page-runner.py --software ;;
+            editor)
+              BROWSER=$(python3 -c 'from playwright.sync_api import sync_playwright; p=sync_playwright().start(); print(p.chromium.executable_path); p.stop()')
+              python3 tests/browser.py --software --browser "$BROWSER" --output test-results/gpu/editor ;;
+            authoring) python3 tests/authoring.py --software ;;
+            *) exit 1 ;;
+          esac
       - name: Retain actual GPU execution evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: webgpu-regression
+          name: webgpu-${{ matrix.suite }}
           path: test-results/gpu
           if-no-files-found: error
+          retention-days: 30
+  codecs:
+    name: Independent OpenEXR interoperability
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          package-manager-cache: false
+      - name: Install the independent reference codec
+        run: python3 -m pip install 'OpenEXR>=3.3,<4' 'numpy>=1.24,<3'
+      - name: Check both directions with compressed mixed-type multipart fixtures
+        run: |
+          node tests/exr-interoperability.mjs generate
+          python3 tests/exr-interoperability.py
+          node tests/exr-interoperability.mjs verify
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: openexr-interoperability
+          path: test-results/gpu/interop
           retention-days: 30
