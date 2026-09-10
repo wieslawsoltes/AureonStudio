@@ -2,7 +2,7 @@ import {bevelMesh} from './bevel.js';
 import { cloneMesh, bounds, catmullClark, subdivide, normals, planarUV } from './mesh.js';
 import { rad } from '../core/math.js';
 export const MODIFIERS = {
-    bevel: {label:'Bevel · convex solid',value:.05,min:.001,max:1,step:.01},
+    bevel: {label:'Bevel · segmented',value:.05,min:.001,max:1,step:.01},
     subdivide: { label: 'Subdivide', value: 1, min: 1, max: 3, step: 1 },
     smooth: { label: 'Catmull–Clark', value: 1, min: 1, max: 3, step: 1 },
     twist: { label: 'Twist', value: 45, min: -360, max: 360, step: 1 },
@@ -21,7 +21,7 @@ export function applyModifier(input, mod) {
     if (!Number.isFinite(v))
         throw Error('Invalid modifier value');
     switch (mod.type) {
-        case 'bevel': return bevelMesh(input,v);
+        case 'bevel': return bevelMesh(input,v,mod);
         case 'subdivide':
         case 'smooth':
             for (let i = 0; i < Math.min(3, Math.max(1, Math.round(v))); i++)

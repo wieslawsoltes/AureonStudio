@@ -1,3 +1,4 @@
+import { installAdvancedTools } from './ui/advanced.js';
 import { installProductionTools } from './ui/production.js';
 import { History } from './core/history.js';
 import { add, sub, mul, dot, cross, normalize, length, clamp, transformPoint, transformVector, inverse, compose } from './core/math.js';
@@ -48,6 +49,7 @@ class Studio {
         });
         this.commands = this.createCommands();
         installProductionTools(this);
+        installAdvancedTools(this);
         this.worker = new Worker(new URL('./render/bvh-worker.js', import.meta.url), { type: 'module' });
         this.worker.onmessage = e => this.finishBuild(e.data);
         this.worker.onerror = e => {
@@ -151,7 +153,7 @@ class Studio {
                 this.builtRevision = id;
                 if (this.gpuReady) {
                     await this.renderer.device.queue.onSubmittedWorkDone();
-                    this.renderer.setAssets(this.doc);
+                    await this.renderer.setAssets(this.doc);
                     this.renderer.setScene(result, this.pendingBuild.materials);
                 }
                 this.dirty = true;
@@ -497,6 +499,10 @@ class Studio {
         this.renderer.fixedSize = null;
         this.renderer.tile = null;
         this.renderer.sampleStart = 0;
+        // A frame export temporarily uses compute even in the Model
+        // workspace. Return to that workspace's actual viewport mode.
+        if ($('[data-workspace="model"]')?.classList.contains('active'))
+            this.renderer.mode = 'raster';
         this.renderer.paused = false;
         // A production frame leaves a shutter-time scene on the GPU. Rebuild
         // from the editable document before resuming the modeling viewport.
@@ -988,7 +994,7 @@ class Studio {
         $('.palette-search').focus();
     }
     help() {
-        this.dialog('Aureon Studio · Getting started', `<p>Create a primitive, select it, and drag a colored transform handle. The property panel edits precise dimensions, transforms, materials, and modifiers.</p><div class="help-grid"><span>Select / move / rotate / scale</span><kbd>Q / W / E / R</kbd><span>Orbit camera</span><kbd>Alt + left drag / right drag</kbd><span>Pan camera</span><kbd>Middle drag / Shift + right drag</kbd><span>Dolly / frame selection</span><kbd>Scroll / F</kbd><span>Snap / grid / wireframe</span><kbd>S / G / F4</kbd><span>Save / open / duplicate</span><kbd>Ctrl+S / Ctrl+O / Ctrl+D</kbd><span>Undo / redo</span><kbd>Ctrl+Z / Ctrl+Shift+Z</kbd><span>Play / set key / render</span><kbd>Space / K / F9</kbd><span>Command palette</span><kbd>Ctrl+K</kbd><span>Toggle inspector on narrow screens</span><kbd>I</kbd></div><h3>Polygon and UV editing</h3><p>Choose Polygon selection in the toolbar, click a face, then use Model → Extrude or Inset. Mesh edits bake the evaluated modifier stack. The UV editor supports seam cuts, conformal unwrap, pins, relaxation, packing, island transforms and planar/spherical projection.</p><h3>Path tracing</h3><p>Render scene switches to the compute renderer. Emissive meshes illuminate other objects. Sampling resets after scene changes. The material-library swatches are illustrative CSS previews, not measured renders.</p><h3>Deformation and production workspaces</h3><p>Model contains solid Boolean and convex bevel commands. Animation contains skeleton, skin, IK, cloth, rigid proxies and cache baking. Render contains bitmap textures, material graphs, media, fixed-frame motion blur, AOV/EXR output and the optional distributed coordinator. See the bundled guide for algorithm limits and GPU qualification.</p><h3>Feature status</h3><p>This is an original v0.2 implementation, not a complete replacement for a mature DCC package or a file/shader-compatible implementation of another renderer. The included documentation lists implemented systems and missing production features explicitly.</p>`, null, 'Close', 660);
+        this.dialog('Aureon Studio · Getting started', `<p>Create a primitive, select it, and drag a colored transform handle. The property panel edits precise dimensions, transforms, materials, and modifiers.</p><div class="help-grid"><span>Select / move / rotate / scale</span><kbd>Q / W / E / R</kbd><span>Orbit camera</span><kbd>Alt + left drag / right drag</kbd><span>Pan camera</span><kbd>Middle drag / Shift + right drag</kbd><span>Dolly / frame selection</span><kbd>Scroll / F</kbd><span>Snap / grid / wireframe</span><kbd>S / G / F4</kbd><span>Save / open / duplicate</span><kbd>Ctrl+S / Ctrl+O / Ctrl+D</kbd><span>Undo / redo</span><kbd>Ctrl+Z / Ctrl+Shift+Z</kbd><span>Play / set key / render</span><kbd>Space / K / F9</kbd><span>Command palette</span><kbd>Ctrl+K</kbd><span>Toggle inspector on narrow screens</span><kbd>I</kbd></div><h3>Polygon and UV editing</h3><p>Choose Polygon selection in the toolbar, click a face, then use Model → Extrude or Inset. Mesh edits bake the evaluated modifier stack. The UV editor supports seam cuts, conformal unwrap, pins, relaxation, packing, island transforms and planar/spherical projection.</p><h3>Path tracing</h3><p>Render scene switches to the compute renderer. Emissive meshes illuminate other objects. Sampling resets after scene changes. The material-library swatches are illustrative CSS previews, not measured renders.</p><h3>Deformation and production workspaces</h3><p>Model contains exact solid Boolean, segmented bevel and UDIM packing commands. Animation contains skeleton, skin, IK, cloth, rigid proxies and cache baking. Render contains bitmap textures, material graphs, media, fixed-frame motion blur, AOV/EXR output and the optional distributed coordinator. See the bundled guide for algorithm limits and GPU qualification.</p><h3>Feature status</h3><p>This is an original v0.3 implementation, not a complete replacement for a mature DCC package or a file/shader-compatible implementation of another renderer. The included documentation lists implemented systems and missing production features explicitly.</p>`, null, 'Close', 660);
     }
     diagnostics() {
         const d = this.renderer.device, s = this.compiled, r = this.renderer;

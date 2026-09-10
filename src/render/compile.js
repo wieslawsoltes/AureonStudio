@@ -46,13 +46,16 @@ export function compileTriangles(doc, geometry) {
             if (Math.hypot(...cross(sub(ps[1], ps[0]), sub(ps[2], ps[0]))) < 1e-10)
                 continue;
             const fn = normalize(transformVector(nm, d.faceNormals[face]));
+            const fiber=!!mesh.fiberTangents, tangent=fiber?normalize(transformVector(world,ids.map(id=>mesh.fiberTangents.slice(id*3,id*3+3)).reduce((a,b)=>a.map((x,k)=>x+b[k]),[0,0,0]))):[0,1,0];
+            const oct=fiber?octEncode(tangent):[0,0], scale=Math.cbrt(Math.abs(dot([world[0],world[1],world[2]],cross([world[4],world[5],world[6]],[world[8],world[9],world[10]])))),radius=fiber?ids.reduce((sum,id)=>sum+mesh.fiberRadii[id],0)/3*scale:0;
             for (let v = 0; v < 3; v++) {
                 chunk.set([...ps[v], v === 0 ? (obj.materialSlots?.[mesh.faceMaterials?.[face]]??obj.material) : v === 1 ? oi : face], j + v * 4);
                 const normal = mesh.smooth !== false && !d.flat.has(face) ? normalsWorld[ids[v]] : fn;
-                chunk.set([...normal, 0], j + 12 + v * 4);
+                chunk.set([...normal, [oct[0],oct[1],radius][v]], j + 12 + v * 4);
             }
+            const faceMaterial=doc.materials[obj.materialSlots?.[mesh.faceMaterials?.[face]]??obj.material],mediumCandidate=faceMaterial.transmission>0||faceMaterial.subsurface?.weight>0||faceMaterial.graph?.outputs?.transmission||faceMaterial.graph?.outputs?.subsurface;
             const uv = ids.map(i => mesh.uvs?.slice(i * 2, i * 2 + 2) || [0, 0]);
-            chunk.set([uv[0][0] || 0, uv[0][1] || 0, uv[1][0] || 0, uv[1][1] || 0, uv[2][0] || 0, uv[2][1] || 0, (obj.hiddenInViewport ? 1 : 0) + (obj.cameraVisible === false ? 2 : 0), 0], j + 24);
+            chunk.set([uv[0][0] || 0, uv[0][1] || 0, uv[1][0] || 0, uv[1][1] || 0, uv[2][0] || 0, uv[2][1] || 0, (obj.hiddenInViewport ? 1 : 0) + (obj.cameraVisible === false ? 2 : 0) + (mediumCandidate ? 4 : 0) + (fiber ? 8 : 0), 0], j + 24);
             j += TRI_FLOATS;
         }
         chunks.push(chunk.subarray(0, j));
@@ -82,3 +85,5 @@ export function compileMaterials(materials) {
     });
     return data;
 }
+
+function octEncode(v){const m=Math.abs(v[0])+Math.abs(v[1])+Math.abs(v[2]);let x=v[0]/m,y=v[1]/m;if(v[2]<0){const old=x;x=(1-Math.abs(y))*(x<0?-1:1);y=(1-Math.abs(old))*(y<0?-1:1);}return [x,y];}

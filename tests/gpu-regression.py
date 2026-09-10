@@ -18,6 +18,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--url', default='http://localhost:4173')
 parser.add_argument('--browser', default=os.environ.get('CHROMIUM_PATH'))
 parser.add_argument('--software', action='store_true')
+parser.add_argument('--baseline-only', action='store_true')
 parser.add_argument('--output', default=str(ROOT/'test-results/gpu'))
 args = parser.parse_args()
 base = args.url.rstrip('/')
@@ -52,12 +53,14 @@ try:
         report['browserVersion']=browser.version
         page=browser.new_page(viewport={'width':1280,'height':900})
         page.on('pageerror',lambda e: report['errors'].append(str(e)))
+        page.on('console',lambda m: print('BROWSER',m.type,m.text,flush=True) if m.type=='error' or m.text.startswith('GPU phase:') else None)
         page.goto(base+'/tests/production-gpu.html')
         try:
             page.wait_for_function('window.done===true',timeout=300000)
         finally:
             report['production']=page.evaluate('window.report || null')
-            page.screenshot(path=str(out/'production.png'))
+            try: page.screenshot(path=str(out/'production.png'),timeout=5000)
+            except Exception as capture_error: report['captureWarning']=str(capture_error)
         check('Production shader, transport, example scene and AOV suite',report['production']['status']=='passed',report['production'].get('failure'))
         page.goto(base+'/')
         page.wait_for_function('window.aureon?.ready',timeout=60000)
@@ -85,6 +88,17 @@ try:
         check('A missing shader file is a loading error, not missing hardware',missing.evaluate('!aureon.gpuReady && aureon.renderer.initializationError.stage==="asset" && aureon.renderer.initializationError.message.includes("HTTP 404") && aureon.renderer.disposed'))
         missing.close()
         check('No uncaught JavaScript errors in renderer and failure recovery tests',not report['errors'],report['errors'])
+        if not args.baseline_only:
+            advanced=browser.new_page()
+            advanced.on('pageerror',lambda e: report['errors'].append(str(e)))
+            advanced.goto(base+'/tests/advanced-gpu.html')
+            try: advanced.wait_for_function('window.done===true',timeout=300000)
+            finally:
+                report['advanced']=advanced.evaluate('window.report || null')
+                try: advanced.screenshot(path=str(out/'advanced.png'),timeout=5000)
+                except Exception as capture_error: report['captureWarning']=str(capture_error)
+            if report['advanced']['status']!='passed':raise RuntimeError('Advanced GPU regression failed: '+str(report['advanced'].get('failure')))
+            if report['errors']:raise RuntimeError('Uncaught advanced test errors: '+str(report['errors']))
         browser.close()
     report['status']='passed'
 except Exception as error:

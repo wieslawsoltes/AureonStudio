@@ -1,3 +1,8 @@
+import {validateFiber} from '../materials/fiber.js';
+import {applyGroom,validateGroom} from '../simulation/groom.js';
+import {validateVolume} from '../volumes/grid.js';
+import {SceneSimulationCache} from '../simulation/scene-world.js';
+import {applyControllers,applyConstraints,validateDependencies} from '../animation/controllers.js';
 import {skinMesh,validateRig} from '../animation/rig.js';
 import {sampleObjectTracks} from '../animation/tracks.js';
 import {SimulationCache} from '../simulation/physics.js';
@@ -127,6 +132,7 @@ export function validateDocument(d) {
     for(const m of d.materials){
         if(m.graph)compileGraph(m.graph);
         if(m.bitmap!==undefined&&(!Number.isInteger(m.bitmap)||!d.textures?.[m.bitmap]))throw Error('Missing material bitmap');
+        if(m.fiber)validateFiber(m.fiber);
         if(m.subsurface){const q=m.subsurface;if(!Number.isFinite(q.weight)||q.weight<0||q.weight>1||!Number.isFinite(q.density)||q.density<=0||!Number.isFinite(q.anisotropy)||Math.abs(q.anisotropy)>=1)throw Error('Invalid subsurface medium');}
         for(const n of m.graph?.nodes||[])if(n.type==='image'&&!d.textures?.[n.texture])throw Error('Shader graph references a missing bitmap');
     }
@@ -136,10 +142,13 @@ export function validateDocument(d) {
         if(o.materialSlots?.some(i=>!Number.isInteger(i)||!d.materials[i]))throw Error('Invalid object material slots');
         if(o.meshCache){const fs=o.meshCache.frames;if(!Array.isArray(fs)||!fs.length||fs.some((f,i)=>!Number.isFinite(f.frame)||i&&f.frame<=fs[i-1].frame||!Array.isArray(f.positions)||f.positions.length!==o.mesh?.positions.length||!f.positions.every(Number.isFinite)))throw Error('Invalid deformation cache');}
         if(o.rig){validateRig(o.rig,o.rig.weights.length/4);if(o.rig.externalJoints?.some(id=>!d.objects.some(x=>x.id===id)))throw Error('Missing external skeleton joint');}
+        if(o.procedural?.groom)validateGroom(o.procedural.groom);
         if(o.procedural?.kind==='hair'&&!d.objects.some(x=>x.id===o.procedural.source&&x.id!==o.id))throw Error('Missing hair source object');
         if(o.morphTargets?.some(m=>!Array.isArray(m)||m.length!==o.mesh?.positions.length||!m.every(Number.isFinite)))throw Error('Invalid morph target');
         for(const t of o.tracks||[]){if(!['translation','rotation','scale','weights'].includes(t.path)||!['STEP','LINEAR','CUBICSPLINE'].includes(t.interpolation)||!Array.isArray(t.times)||!t.times.length||t.times.some((x,i)=>!Number.isFinite(x)||x<0||i&&x<=t.times[i-1])||!Array.isArray(t.values)||!t.values.every(Number.isFinite)||t.values.length!==t.times.length*t.components*(t.interpolation==='CUBICSPLINE'?3:1))throw Error('Invalid imported animation track');}
     }
+    if(d.volumes){if(!Array.isArray(d.volumes)||d.volumes.length>32)throw Error('Invalid volume collection');d.volumes.forEach(validateVolume);}
+    validateDependencies(d.objects);
     return d;
 }
 export function sampleTransform(o, frame, mode = 'smooth') {
@@ -168,20 +177,21 @@ export function setKey(o, frame) {
     o.keys.sort((a, b) => a.frame - b.frame);
 }
 export function worldMatrix(doc, obj, frame = doc.animation.frame, cache = new Map()) {
-    if (cache.has(obj.id))
-        return cache.get(obj.id);
-    let m = compose(frame === doc.animation.frame && !obj.tracks?.length ? obj : sampleTransform(obj, frame, doc.animation.interpolation));
-    if (obj.parent) {
-        const p = doc.objects.find(o => o.id === obj.parent);
-        if (p)
-            m = matMul(worldMatrix(doc, p, frame, cache), m);
-    }
-    cache.set(obj.id, m);
-    return m;
+    if(cache.has(obj.id)){const m=cache.get(obj.id);if(m===null)throw Error('Cyclic constraint/controller dependency');return m;}
+    cache.set(obj.id,null);
+    try {
+        const resolve=id=>{const target=doc.objects.find(o=>o.id===id);if(!target)throw Error('Missing constraint/controller target');return worldMatrix(doc,target,frame,cache);};
+        const context={frame,time:frame/doc.animation.fps,fps:doc.animation.fps,resolve};
+        const base=frame===doc.animation.frame&&!obj.tracks?.length?obj:sampleTransform(obj,frame,doc.animation.interpolation);
+        let m=compose(applyControllers(base,obj.controllers,context));
+        if(obj.parent)m=matMul(resolve(obj.parent),m);
+        m=applyConstraints(m,obj.constraints,context);
+        cache.set(obj.id,m);return m;
+    }catch(error){cache.delete(obj.id);throw error;}
 }
 export class GeometryCache {
-    constructor(){this.cache=new Map();this.simulations=new SimulationCache();this.context=null;this.evaluating=new Set();}
-    setContext(doc,frame=doc.animation.frame){this.context=doc;this.frame=frame;return this;}
+    constructor(){this.cache=new Map();this.simulations=new SceneSimulationCache();this.context=null;this.evaluating=new Set();}
+    setContext(doc,frame=doc.animation.frame){this.context=doc;this.frame=frame;this.simulations.setContext(doc,frame,(o,f)=>worldMatrix(doc,o,f),(o,f)=>{let m=evaluateModifiers(o.type==='mesh'?validateMesh(o.mesh):createPrimitive(o.type,o.params),o.modifiers);if(o.rig)m=skinMesh(m,o.rig,f);return m;});return this;}
     get(o){
         if(this.evaluating.has(o.id))throw Error('Cyclic procedural geometry dependency');
         const frame=this.frame??this.context?.animation.frame??0,fps=this.context?.animation.fps||24;
@@ -189,10 +199,11 @@ export class GeometryCache {
         try {
             let source=null;if(o.procedural?.kind==='hair'){const parent=this.context?.objects.find(x=>x.id===o.procedural.source);if(!parent)throw Error('Hair source is missing');source=this.get(parent);}
             const external=o.rig?.externalJoints?.map(id=>{const joint=this.context?.objects.find(x=>x.id===id);if(!joint)throw Error('Missing skeleton joint');return worldMatrix(this.context,joint,frame);});
-            const key=JSON.stringify([o.type,o.params,o.mesh,o.modifiers,o.rig,o.simulation,o.procedural,o.meshCache,o.morphTargets,o.morphWeights,external,source,((o.rig||o.simulation||o.procedural||o.tracks||o.meshCache)?frame:0)]);
+            const physicsKey=o.simulation?(this.simulations.prepare(),this.simulations.signature):null;
+            const key=JSON.stringify([physicsKey,o.type,o.params,o.mesh,o.modifiers,o.rig,o.simulation,o.procedural,o.meshCache,o.morphTargets,o.morphWeights,external,source,((o.rig||o.simulation||o.procedural||o.tracks||o.meshCache)?frame:0)]);
             const old=this.cache.get(o.id);if(old?.key===key)return old.mesh;
             let mesh;
-            if(o.procedural?.kind==='hair') {let curves=generateHair(source,o.procedural);if(o.procedural.dynamics)curves=simulateHair(curves,Math.max(0,frame/fps),o.procedural.dynamics);mesh=curvesToMesh(curves,o.procedural);}
+            if(o.procedural?.kind==='hair') {let curves=generateHair(source,o.procedural);if(o.procedural.groom)curves=applyGroom(curves,o.procedural.groom,{emitter:source});if(o.procedural.dynamics)curves=simulateHair(curves,Math.max(0,frame/fps),o.procedural.dynamics);mesh=curvesToMesh(curves,o.procedural);}
             else if(o.procedural?.kind==='particles')mesh=particlesToMesh(sampleParticles(o.procedural,Math.max(0,frame/fps)));
             else {let base=o.type==='mesh'?validateMesh(o.mesh):createPrimitive(o.type,o.params);
                 if(o.morphTargets){base=structuredClone(base);const weights=sampleObjectTracks(o,frame).morphWeights||o.morphWeights||[];for(let t=0;t<o.morphTargets.length;t++)if(weights[t])for(let i=0;i<base.positions.length;i++)base.positions[i]+=o.morphTargets[t][i]*weights[t];delete base.vertexNormals;}

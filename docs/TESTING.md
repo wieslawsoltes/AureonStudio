@@ -1,71 +1,54 @@
-# Validation report — v0.2 development build
+# Validation — v0.3.0 integration
 
-## Recorded results
+## Evidence and scope
 
-| Layer | Actual result | What this establishes |
+The integrated source was independently rerun locally with **244 CPU/HTTP/codec/packaging tests passing**, before adding four suite-runner/CI regression tests. The final CPU suite therefore contains **248 tests**. This includes a real HTTP coordinator SIGKILL/restart test, not only graceful-close persistence checks.
+
+[PR #1](https://github.com/wieslawsoltes/AureonStudio/pull/1) contains the exact source revisions and their CI checks. The [pre-finalization validation run](https://github.com/wieslawsoltes/AureonStudio/actions/runs/34459206022) passed every matrix job on the integrated application. Final CI reruns the matrix after the documentation/runner cleanup. Check the PR and merged revision's jobs for that revision's result; do not substitute an older green run for a changed head.
+
+| Layer | Recorded integrated-source result | Coverage |
 |---|---|---|
-| `npm test` | 159 passed, 0 failed | CPU algorithms/codecs/scene logic plus real HTTP coordinator behavior |
-| Offline editor integration | 19 checks passed, no uncaught JS exceptions | Actual menus/dialogs/history/module-worker workflows without a GPU |
-| Independent codecs | 2 checks passed | OpenCV RGB FLOAT EXR decode and Pillow exact RGBA PNG decode |
-| Example scenes | 11 validated; finite CPU triangle buffers | Loadable canonical data and CPU evaluation at saved times |
-| v0.2 GPU suite | **BLOCKED; zero checks executed** | No claim of shader compilation, GPU dispatch or GPU-render correctness |
-| Hardware performance | **Not measured** | No throughput/FPS claim |
+| CPU before runner cleanup | 244 passed, no failures or skips | Geometry, controllers, simulation, formats, persistence, HTTP and Pages |
+| Transport | 46 production checks + 9 startup/recovery checks passed | Real shader pipelines, 11 examples, HDR/AOV readback, denoising, temporal/tile rendering and failure diagnostics |
+| Advanced shading | 12 checks passed | Graph GPU/CPU agreement, constant-edit reuse, UDIM seam filtering, fiber PDF/lobes and heterogeneous density |
+| Retained editor | 34 checks passed | Actual creation/editing/history/files/animation and render-to-modeling transitions |
+| Production authoring | 28 checks passed | Bevel/Boolean/UV, paint/groom drafts and undo, controllers/retargeting, scene dynamics, volume authoring and compressed EXR export |
+| Independent EXR | Both directions passed | Project output decoded by official OpenEXR; reference ZIP/ZIPS mixed-type single/multipart output decoded by the project |
 
-Current machine-readable reports and fixtures are in `test-results/v0.2/`. The final CPU TAP report is `cpu-tests.tap`. The offline screenshot `node-editor.png` in the original downloadable v0.2 archive shows the real node graph UI on an offline page, with a GPU-unavailable workspace behind the dialog. It is not a rendered-scene screenshot.
+These browser runs used Chromium 151.0.7922.34 with **SwiftShader's software WebGPU adapter**. They execute actual WGSL and browser editor controls, not renderer test doubles. They do not measure physical-GPU speed, establish arbitrary-scene robustness or certify commercial parity. The tested browser suites finish without uncaught JavaScript or uncaptured GPU errors; deliberate error-injection cases have their own expected diagnostics.
 
-## Why the GPU test is blocked
-
-The installed managed Chromium policy blocks navigation to all URLs, including `http://localhost:4173/tests/production-gpu.html`. The actual runner returned `ERR_BLOCKED_BY_ADMINISTRATOR`. Its report records `status: "blocked"` and an empty check list. The policy was not changed or bypassed. An offline `about:blank` DOM can execute source modules, but it has no usable WebGPU adapter and cannot compile/dispatch WGSL.
-
-Therefore the new graph, volume, subsurface, photon/final-gather, AOV, denoise, temporal and tile shader integrations remain **unverified**, even though their source and host code are present. CPU/editor tests cannot replace GPU tests. Old v0.1 screenshots and 32 browser checks are archived under `docs/archive/v0.1/` and apply only to that earlier code.
-
-## CPU and HTTP coverage
-
-`tests/core.test.mjs` and `tests/examples.test.mjs` retain the original math, primitive, modifier, BVH, native-format, editing and animation checks. `tests/production.test.mjs` adds solid volumes/topology, conformal charts and local seam-sector splitting, pin preservation, material/normal metadata, normalized skinning, dual-quaternion guards, IK target/length behavior, imported tracks, XPBD pins/constraints, rigid contacts, fractional checkpoint preservation, hair/particles, graph DAG/arithmetic, bitmap linear-light sampling/mips, EXR FLOAT/UINT round-trip, PNG structure, glTF accessors/skin/morph/hard-edge/material round-trip, PLY/USDA transforms/visibility, shutter sampling and queue arithmetic.
-
-`tests/coordinator.test.mjs` launches a real Node HTTP server and requests auth/CORS, job submission/status, claim, heartbeat, result, EXR download, cancellation and invalid paths. Synthetic pixel data is used deliberately to isolate scheduler/merge correctness. It is not labeled as renderer output. Queue tests cover coverage, weighted mean, IDs, duplicate completion, expired/stale leases, invalid finite data and memory release.
-
-These are finite regression fixtures, not exhaustive geometric robustness, file-format certification, adversarial security audit or light-transport reference-image comparisons.
-
-## Offline editor coverage
-
-`tests/offline-ui.py` embeds the actual application modules and stylesheet in an offline DOM; it does not replace algorithms or fake `navigator.gpu`. It exercises creation and the real CPU worker, rig binding/pose keys, graph application, canonical media settings, AOV/denoise configuration, conformal UVs, hair, particles, rigid/cloth attachment, position-cache baking, interchange/distributed dialog controls and a Boolean result with hidden operands. It checks document validity through the actual validator and records uncaught exceptions.
-
-Bitmap browser decode/file-picker workflows and WebGPU resource creation are not independently proven by the DOM test. Interchange/coordinator dialog presence does not count as an end-to-end file/remote rendering test; their algorithms/HTTP paths have separate tests.
-
-## Independent codec verification
-
-`tests/codec-fixtures.mjs` writes a tiny original EXR and PNG. `tests/independent-codecs.py` reads them through OpenCV and Pillow. OpenCV checked 2×2 RGB float values including 3.5 and −0.4. It did not validate arbitrary AOV/UINT channels; those use the project's round-trip test. Pillow checked exact RGBA bytes including partial alpha. These fixtures are not GPU renders.
-
-Run on a machine with optional test dependencies:
+## Reproduce
 
 ```sh
 npm test
-npm run test:offline-ui
-npm run test:codecs
-npm run examples
+python3 -m pip install -r requirements-dev.txt
+python3 -m playwright install --with-deps chromium
+npm run test:gpu:software
 ```
 
-The application itself has no Python dependency. `requirements-dev.txt` covers the pre-existing browser test setup; OpenCV/Pillow are additional optional consumers. Browser runners use Playwright with a locally installed Chromium.
+`tests/run-webgpu.py` is the canonical command dispatcher for local runs and CI. By default it runs all four suites sequentially. `--suite transport|advanced|editor|authoring` selects the identical suite used by a CI matrix job. `--plan` prints argument vectors without executing them. There is no shell-source parsing or automatic merge in this runner. Child failure, timeout and launch errors fail the command. The runner's own failure-propagation unit test mocks only a child process exit; it does not replace a renderer or count mocked rendering as GPU evidence.
 
-## GPU regression on the target machine
+Transport uses `--baseline-only` solely because the separate advanced matrix job executes `advanced-gpu.html`. The advanced suite is not omitted from the complete gate. Software mode is explicit; run `npm run test:gpu` for an available hardware adapter. A blocked browser or unavailable adapter is a failure, not a skip or pass.
+
+Independent codec validation:
 
 ```sh
-npm start
-# In a second terminal:
-python3 tests/production-gpu.py --url http://localhost:4173 --browser /path/to/chromium
+python3 -m pip install 'OpenEXR>=3.3,<4' 'numpy>=1.24,<3'
+node tests/exr-interoperability.mjs generate
+python3 tests/exr-interoperability.py
+node tests/exr-interoperability.mjs verify
 ```
 
-Or manually open `tests/production-gpu.html`. The page initializes real pipelines, checks finite nonzero path output, AOV reconstruction, denoise raw-buffer preservation, bitmap/graph raster/trace execution, volume/SSS execution, stored photons/final gathering, non-square tile/full-frame agreement and temporal geometry output. A failed setup or assertion produces failure, not a synthetic success. The runner writes `gpu-report.json` and exits nonzero unless the page passed. These checks still need to be run successfully before treating this release as GPU-qualified.
+The fixtures include mixed HALF/FLOAT/UINT channels, values outside display range, multipart data and multiple scanline chunks. They validate supported subsets, not every EXR mode. `tests/independent-codecs.py` retains the earlier RGB FLOAT EXR/PNG checks separately.
 
-`tests/browser.py` retains broader interactive browser coverage from v0.1 and can be run against the current source on an appropriate browser. Its historical passing report has not been reused as a current result.
+## GPU compilation regression
 
-## Performance and packaging
+The initial UDIM/material interpreter caused severe driver compilation expansion. The integrated repair compiles material DAGs into straight-line WGSL, stores editable constants separately, specializes fiber usage, uses vec4 packed-asset loads and shares one texture-load path across eight trilinear UDIM taps. Actual execution tests compare graph/fiber outputs with CPU references and exercise cross-tile filtering. Tests were not changed to use a fake image or remove these material features.
 
-No v0.2 hardware render benchmark was collected. CPU geometry/physics, per-sample deformation, triangle hair and JSON-based cache/history operations can dominate large scenes; do not infer extreme speed from a small test suite. The BVH remains flattened and CPU-built/refit. Denoising/photon mapping quality and numerical stability need reference scenes and target-device measurements.
+The later automatic finalization workflow failed for a different reason: extracting commands from YAML preserved a shell `;;` terminator as a Python argument. That redundant self-modifying workflow is removed. The normal read-only CI matrix now invokes explicit argument vectors through `run-webgpu.py`; merging is separate from test execution.
 
-`MANIFEST.sha256` records packaged source file digests. The final archive should be verified by extraction, manifest checks and rerunning `npm test`; a separate packaging report records that check. A valid archive and passing CPU tests do not change the GPU qualification boundary.
+## Publication and retained evidence
 
-## Publication checks
+`pages.yml` requires both build and all GPU/codec jobs. A PR run never deploys. After a merge, the `main` run deploys its tested artifact and checks HTTPS status, commit/version metadata and SHA-256 for every public asset. Reports are retained as Actions artifacts (`publication-proof`, `webgpu-*`, `openexr-interoperability`, and `live-publication-verification`).
 
-The GitHub Pages staging tests verify exact browser assets, relative imports and worker/shader URLs under `/AureonStudio/`, exclusion of server and test files, stale-output cleanup and source-directory safeguards. `npm run build:pages` emits the deployment artifact in `_site/`. Generated screenshot captures remain in the original development archives rather than the Git repository.
+Reports under `test-results/v0.2/` and `docs/archive/v0.1/` are historical. Their earlier blocked-GPU statements do not describe this integrated release, and their screenshots must not be presented as new validation. Multi-machine GPU performance, exhaustive collision/transport validation, storage-failure certification and unsupported interchange remain outside the proven scope.

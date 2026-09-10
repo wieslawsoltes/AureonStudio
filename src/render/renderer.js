@@ -1,6 +1,7 @@
+import {compileSceneAssets} from './assets.js';
 import {RendererError, rendererError, readShader, compileShaderModule, validateResources} from './diagnostics.js';
 import {TextureArray} from '../materials/textures.js';
-import {compileGraphs} from '../materials/graph.js';
+import {compileMaterialWGSL,specializeMaterialSource} from '../materials/wgsl-graph.js';
 import {Denoiser} from './denoiser.js';
 import { cameraFrame } from './camera.js';
 import { rad } from '../core/math.js';
@@ -19,8 +20,11 @@ export class Renderer {
         this.maxPixels = 2073600;
     }
     async init() {
+        const start=performance.now();
         try {
-            return await this.initialize();
+            const result=await this.initialize();
+            this.initializationMilliseconds=performance.now()-start;
+            return result;
         } catch (error) {
             this.initializationError = rendererError(error, this.initStage || 'initialization');
             this.dispose();
@@ -59,9 +63,10 @@ export class Renderer {
         this.format = navigator.gpu.getPreferredCanvasFormat();
         this.context.configure({ device: this.device, format: this.format, alphaMode: 'opaque', usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.COPY_DST });
         this.initStage = 'shader';
-        const common = await readShader(new URL('common.wgsl', import.meta.url));
+        const common = this.commonSource = await readShader(new URL('common.wgsl', import.meta.url));
+        this.shaderSources=Object.fromEntries(await Promise.all(['pathtrace.wgsl','display.wgsl','raster.wgsl'].map(async file=>[file,await readShader(new URL(file,import.meta.url))])));
         const results = await Promise.allSettled(['pathtrace.wgsl', 'display.wgsl', 'raster.wgsl'].map(async file =>
-            compileShaderModule(this.device, file, await readShader(new URL(file, import.meta.url)), common + '\n')));
+            compileShaderModule(this.device, file, this.shaderSources[file], common + '\n')));
         const failures = results.filter(result => result.status === 'rejected').map(result => result.reason);
         if (failures.length) {
             const first = rendererError(failures[0], 'shader');
@@ -71,10 +76,15 @@ export class Renderer {
         }
         const [compute, display, raster] = results.map(result => result.value);
         this.initStage = 'pipeline';
+        this.onStatus('Compiling photon pipeline');
         this.photonPipeline = await this.device.createComputePipelineAsync({ label: 'Linked-cell photon emission', layout: 'auto', compute: { module: compute, entryPoint: 'photonMain' } });
+        this.onStatus('Compiling path pipeline');
         this.compute = await this.device.createComputePipelineAsync({ label: 'Aureon Ray integrator', layout: 'auto', compute: { module: compute, entryPoint: 'main' } });
         this.display = await this.device.createRenderPipelineAsync({ label: 'Linear HDR display', layout: 'auto', vertex: { module: display, entryPoint: 'vertexMain' }, fragment: { module: display, entryPoint: 'fragmentMain', targets: [{ format: this.format }] }, primitive: { topology: 'triangle-list' } });
+        this.onStatus('Compiling viewport pipeline');
         this.raster = await this.device.createRenderPipelineAsync({ label: 'Modeling viewport', layout: 'auto', vertex: { module: raster, entryPoint: 'vertexMain' }, fragment: { module: raster, entryPoint: 'fragmentMain', targets: [{ format: this.format }] }, primitive: { topology: 'triangle-list', cullMode: 'none' }, depthStencil: { format: 'depth24plus', depthWriteEnabled: true, depthCompare: 'less' } });
+        this.materialPipelines=new Map([[compileMaterialWGSL([]).key,{photon:this.photonPipeline,compute:this.compute,raster:this.raster}]]);
+        this.materialPipelineKey=compileMaterialWGSL([]).key;
         this.initStage = 'resources';
         await validateResources(this.device, () => {
         this.uniform = this.device.createBuffer({ label: 'Camera and frame', size: 512, usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST });
@@ -83,6 +93,7 @@ export class Renderer {
         this.aovBuffer=this.device.createBuffer({size:80,usage:GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_SRC});
         this.photonBuffer=this.device.createBuffer({size:16384+80*8,usage:GPUBufferUsage.STORAGE|GPUBufferUsage.COPY_DST|GPUBufferUsage.COPY_SRC});
         this.graphBuffer=this.buffer(new Float32Array(16),'Shader graphs');
+        this.transportReadback=this.device.createBuffer({label:'Transport diagnostic readback',size:4,usage:GPUBufferUsage.COPY_DST|GPUBufferUsage.MAP_READ});
         this.textureArray=new TextureArray(this.device);this.textureArray.upload([],1);
         this.bind();
         });
@@ -115,18 +126,35 @@ export class Renderer {
     makeDisplayGroup(pixels) {
         this.displayGroup=this.device.createBindGroup({layout:this.display.getBindGroupLayout(0),entries:[{binding:0,resource:{buffer:this.uniform}},{binding:3,resource:{buffer:pixels}},{binding:6,resource:{buffer:this.aovBuffer}}]});
     }
-    setAssets(doc) {
-        const key=JSON.stringify([doc.textures||[],doc.materials.map(m=>m.graph||null),doc.settings.textureResolution||256]);
+    async prepareMaterialPipelines(materials) {
+        const shader=specializeMaterialSource(this.commonSource,materials);
+        if(shader.key===this.materialPipelineKey)return;
+        let pipelines=this.materialPipelines.get(shader.key);
+        if(!pipelines){
+            const start=performance.now();
+            this.onStatus('Compiling material graph pipelines');
+            const [compute,raster]=await Promise.all(['pathtrace.wgsl','raster.wgsl'].map(name=>compileShaderModule(this.device,name,this.shaderSources[name],shader.code+'\n')));
+            const photon=await this.device.createComputePipelineAsync({label:'Graph-specialized photon transport',layout:'auto',compute:{module:compute,entryPoint:'photonMain'}});
+            const trace=await this.device.createComputePipelineAsync({label:'Graph-specialized path transport',layout:'auto',compute:{module:compute,entryPoint:'main'}});
+            const viewport=await this.device.createRenderPipelineAsync({label:'Graph-specialized viewport',layout:'auto',vertex:{module:raster,entryPoint:'vertexMain'},fragment:{module:raster,entryPoint:'fragmentMain',targets:[{format:this.format}]},primitive:{topology:'triangle-list',cullMode:'none'},depthStencil:{format:'depth24plus',depthWriteEnabled:true,depthCompare:'less'}});
+            pipelines={photon,compute:trace,raster:viewport,milliseconds:performance.now()-start};this.materialPipelines.set(shader.key,pipelines);
+            while(this.materialPipelines.size>4)this.materialPipelines.delete(this.materialPipelines.keys().next().value);
+        }
+        this.photonPipeline=pipelines.photon;this.compute=pipelines.compute;this.raster=pipelines.raster;this.materialPipelineKey=shader.key;
+    }
+    async setAssets(doc) {
+        const key=JSON.stringify([doc.textures||[],doc.materials.map(m=>[m.graph||null,m.absorption||null,m.fiber||null]),doc.volumes||[],doc.settings.textureResolution||256]);
         if(key===this.assetKey)return;
-        const graphs=compileGraphs(doc.materials);const replacement=this.buffer(graphs.data,'Shader graphs');
-        try {this.textureArray.upload(doc.textures||[],doc.settings.textureResolution||256);}catch(e){replacement.destroy();throw e;}
-        this.graphBuffer.destroy();this.graphBuffer=replacement;this.assetKey=key;this.bind();this.reset();
+        await this.prepareMaterialPipelines(doc.materials);
+        const assets=compileSceneAssets(doc);const replacement=this.buffer(assets.data,'Scene graphs, UDIM tables and density fields');
+        try {this.textureArray.upload(assets.sources,doc.settings.textureResolution||256);}catch(e){replacement.destroy();throw e;}
+        this.graphBuffer.destroy();this.graphBuffer=replacement;this.assets=assets;this.assetKey=key;this.bind();this.reset();
     }
     setScene(scene, materials, {preserveAccumulation=false}={}) {
         const replacement={};
         try {replacement.triangles=this.buffer(scene.triangles,'Triangles');replacement.nodes=this.buffer(scene.nodes,'BVH nodes');replacement.lights=this.buffer(scene.lights,'Light distribution');replacement.materials=this.buffer(materials,'Materials');}
         catch(error){Object.values(replacement).forEach(b=>b.destroy());throw error;}
-        const old=this.buffers;this.buffers=replacement;this.scene=scene;this.photonDirty=true;this.bind();Object.values(old).forEach(b=>b.destroy());
+        const old=this.buffers;this.buffers=replacement;this.scene=scene;this.mediumBounds=new Map();for(let i=0;i<scene.triangles.length;i+=32){const t=scene.triangles;if((t[i+30]&4)===0)continue;const id=t[i+7];let b=this.mediumBounds.get(id);if(!b)this.mediumBounds.set(id,b={min:[Infinity,Infinity,Infinity],max:[-Infinity,-Infinity,-Infinity]});for(let v=0;v<3;v++)for(let k=0;k<3;k++){b.min[k]=Math.min(b.min[k],t[i+v*4+k]);b.max[k]=Math.max(b.max[k],t[i+v*4+k]);}}this.photonDirty=true;this.bind();Object.values(old).forEach(b=>b.destroy());
         if(!preserveAccumulation)this.reset();
     }
     configurePhotons(settings) {
@@ -183,14 +211,24 @@ export class Renderer {
             u.set(c.viewProjection, 28);
             u.set([+grid, +wireframe, 0, 0], 44);
             const volume=doc.volume||{},integrator=['path','photon','finalGather'].indexOf(s.integrator||'path');
-            if(integrator>0&&(volume.density>0||doc.materials.some(m=>m.subsurface?.weight>0||m.graph?.outputs?.subsurface)))throw Error('Photon mapping is surface-only; select path tracing for volumes/subsurface materials');
-            u.set([...(volume.min||[-5,0,-5]),volume.density||0,...(volume.max||[5,5,5]),volume.anisotropy||0,...(volume.color||[.9,.9,.9]),0,Math.max(0,integrator),this.photonCount||1,s.photonRadius||.3,+!!s.denoise],48);
-            u.set([this.tile?.x||0,this.tile?.y||0,this.tile?.fullWidth||w,this.tile?.fullHeight||h,this.sampleStart||0,0,s.seed||0,s.textureLod||0],64);
+            const iteration=this.samples+(this.sampleStart||0),photonRadius=(s.photonRadius||.3)*(s.progressivePhotons===false?1:Math.pow(iteration+1,-1/7));
+            this.currentPhotonRadius=photonRadius;
+            const insideCandidate=c.ortho&&this.mediumBounds?.size>0||[...(this.mediumBounds?.values()||[])].some(b=>c.eye.every((x,k)=>x>=b.min[k]-(doc.camera.aperture||0)&&x<=b.max[k]+(doc.camera.aperture||0)));
+            const lower=[Infinity,Infinity,Infinity],upper=[-Infinity,-Infinity,-Infinity];
+            const include=b=>{if(b)for(let k=0;k<3;k++){lower[k]=Math.min(lower[k],b.min[k]);upper[k]=Math.max(upper[k],b.max[k]);}};
+            if(this.scene?.triangles.length){const n=new Float32Array(this.scene.nodes);include({min:[n[0],n[1],n[2]],max:[n[4],n[5],n[6]]});}
+            include(this.assets?.volumeBounds);if(volume.density>0)include(volume);if(!lower.every(Number.isFinite)){lower.fill(-1);upper.fill(1);}
+            u.set([...(volume.min||[-5,0,-5]),volume.density||0,...(volume.max||[5,5,5]),volume.anisotropy||0,...(volume.color||[.9,.9,.9]),0,Math.max(0,integrator),this.photonCount||1,photonRadius,+!!s.denoise],48);
+            u.set([this.tile?.x||0,this.tile?.y||0,this.tile?.fullWidth||w,this.tile?.fullHeight||h,this.sampleStart||0,+!!insideCandidate,s.seed||0,s.textureLod||0],64);
+            u.set([this.assets?.textureOffset||0,this.assets?.textureCount||0,this.assets?.volumeOffset||0,this.assets?.volumeCount||0],72);
+            u.set([this.assets?.materialOffset||0,s.progressivePhotons===false?0:1,0,this.mediumBounds?.size||0],76);
+            u.set([...lower,0,...upper,0],80);
             this.device.queue.writeBuffer(this.uniform, 0, u);
             const encoder = this.device.createCommandEncoder({ label: 'Aureon frame' });
             const tracing = this.mode === 'trace', sample = tracing && !this.paused && this.samples < s.samples;
-            if(sample && integrator>0 && this.photonDirty){
-                encoder.clearBuffer(this.photonBuffer);const emit=encoder.beginComputePass({label:'Emit and store surface photons'});emit.setPipeline(this.photonPipeline);emit.setBindGroup(0,this.photonGroup);emit.setBindGroup(1,this.materialGroups.photon);emit.dispatchWorkgroups(Math.ceil(this.photonCount/64));emit.end();this.photonDirty=false;
+            if(sample)encoder.clearBuffer(this.photonBuffer,4095*4,4);
+            if(sample && integrator>0 && (this.photonDirty||s.progressivePhotons!==false)){
+                encoder.clearBuffer(this.photonBuffer);const emit=encoder.beginComputePass({label:'Emit surface and volume photons'});emit.setPipeline(this.photonPipeline);emit.setBindGroup(0,this.photonGroup);emit.setBindGroup(1,this.materialGroups.photon);emit.dispatchWorkgroups(Math.ceil(this.photonCount/64));emit.end();this.photonDirty=false;
             }
             if (sample) {
                 const pass = encoder.beginComputePass();
@@ -210,9 +248,11 @@ export class Renderer {
             pass.draw(tracing ? 3 : (this.scene?.triangles.length / 32 || 0) * 3);
             pass.end();
             encoder.copyTextureToTexture({ texture: this.colorTexture }, { texture: this.context.getCurrentTexture() }, [w, h]);
+            if(sample)encoder.copyBufferToBuffer(this.photonBuffer,4095*4,this.transportReadback,0,4);
             const start = performance.now();
             this.device.queue.submit([encoder.finish()]);
             await this.device.queue.onSubmittedWorkDone();
+            if(sample){await this.transportReadback.mapAsync(GPUMapMode.READ);const flags=new Uint32Array(this.transportReadback.getMappedRange())[0];this.transportReadback.unmap();if(flags){this.paused=true;throw new RendererError('transport',[(flags&1)?'Volume null-collision budget exceeded; reduce the majorant/density contrast or split the volume region':null,(flags&2)?'Dielectric nesting exceeds 32 simultaneous media':null,(flags&4)?'Camera-inside classification exceeds 256 boundary crossings':null,(flags&8)?'Nonfinite or overflowing light transport':null].filter(Boolean).join('; '));}}
             this.lastDuration = performance.now() - start;
             this.elapsed = performance.now() - this.started;
         }
@@ -271,7 +311,7 @@ export class Renderer {
         const buffer=this.device.createBuffer({size,usage:GPUBufferUsage.COPY_DST|GPUBufferUsage.MAP_READ});
         try {const encoder=this.device.createCommandEncoder();encoder.copyBufferToBuffer(this.aovBuffer,0,buffer,0,size);this.device.queue.submit([encoder.finish()]);await buffer.mapAsync(GPUMapMode.READ);return {width,height,data:new Float32Array(buffer.getMappedRange().slice(0))};}finally{buffer.unmap();buffer.destroy();}
     }
-    async photonStatistics(){if(!this.photonCount)return {stored:0};await this.device.queue.onSubmittedWorkDone();const size=this.photonCount*8*80,buffer=this.device.createBuffer({size,usage:GPUBufferUsage.COPY_DST|GPUBufferUsage.MAP_READ});try{const e=this.device.createCommandEncoder();e.copyBufferToBuffer(this.photonBuffer,16384,buffer,0,size);this.device.queue.submit([e.finish()]);await buffer.mapAsync(GPUMapMode.READ);const a=new Float32Array(buffer.getMappedRange());let stored=0,flux=0,finite=true;for(let i=0;i<a.length;i+=20){if(a[i+3]){stored++;for(let k=0;k<3;k++){finite&&=Number.isFinite(a[i+8+k]);flux+=a[i+8+k];}}}return {emitted:this.photonCount,stored,flux,finite};}finally{buffer.unmap();buffer.destroy();}}
+    async photonStatistics(){if(!this.photonCount)return {stored:0};await this.device.queue.onSubmittedWorkDone();const size=this.photonCount*8*80,buffer=this.device.createBuffer({size,usage:GPUBufferUsage.COPY_DST|GPUBufferUsage.MAP_READ});try{const e=this.device.createCommandEncoder();e.copyBufferToBuffer(this.photonBuffer,16384,buffer,0,size);this.device.queue.submit([e.finish()]);await buffer.mapAsync(GPUMapMode.READ);const a=new Float32Array(buffer.getMappedRange());let stored=0,surface=0,volume=0,flux=0,finite=true;for(let i=0;i<a.length;i+=20){if(a[i+3]){stored++;if(a[i+3]===1)surface++;else if(a[i+3]===2)volume++;for(let k=0;k<3;k++){finite&&=Number.isFinite(a[i+8+k]);flux+=a[i+8+k];}}}return {emitted:this.photonCount,stored,surface,volume,flux,finite,radius:this.currentPhotonRadius};}finally{buffer.unmap();buffer.destroy();}}
     dispose() {
         this.disposed = true;
         this.denoiser?.dispose();this.textureArray?.dispose();

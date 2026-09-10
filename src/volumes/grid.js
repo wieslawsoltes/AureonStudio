@@ -1,0 +1,27 @@
+/** Affine dense/sparse scalar density fields. Sparse leaves are 8³ voxels with
+ * zero-background topology; trilinear samples cross leaf boundaries exactly.
+ */
+import {inverse,transformPoint,compose,clamp} from '../core/math.js';
+const BLOCK=8;
+export function validateVolume(v){
+    if(!v||!Number.isFinite(v.density??1)||(v.density??1)<0||(v.density??1)>1e6||!Array.isArray(v.color)||v.color.length!==3||v.color.some(x=>!Number.isFinite(x)||x<0||x>1)||!Number.isFinite(v.anisotropy??0)||Math.abs(v.anisotropy??0)>=1)throw Error('Invalid volume optical parameters');
+    if(v.emission&&(v.emission.length!==3||v.emission.some(x=>!Number.isFinite(x)||x<0)))throw Error('Invalid volume emission');
+    if(!Number.isInteger(v.priority??0)||Math.abs(v.priority??0)>1000000)throw Error('Invalid volume priority');
+    const g=v.grid;if(g){if(!Array.isArray(g.dimensions)||g.dimensions.length!==3||g.dimensions.some(x=>!Number.isInteger(x)||x<1||x>4096))throw Error('Invalid volume grid dimensions');
+        if(g.data){if(g.dimensions.reduce((a,b)=>a*b,1)>16777216||g.data.length!==g.dimensions.reduce((a,b)=>a*b,1)||Array.from(g.data).some(x=>!Number.isFinite(x)||x<0||x>1e6))throw Error('Invalid dense density grid');}
+        else if(g.blocks){if(!Array.isArray(g.blocks)||g.blocks.length>32768||g.background&&g.background!==0)throw Error('Invalid sparse density grid');const keys=new Set();for(const b of g.blocks){if(!Array.isArray(b.coord)||b.coord.length!==3||b.coord.some((x,i)=>!Number.isInteger(x)||x<0||x>=Math.ceil(g.dimensions[i]/BLOCK))||b.values?.length!==512||Array.from(b.values).some(x=>!Number.isFinite(x)||x<0||x>1e6)||keys.has(b.coord.join(',')))throw Error('Invalid sparse volume leaf');keys.add(b.coord.join(','));}}
+        else throw Error('Volume grid has no voxel data');
+    }
+    volumeTransform(v);return v;
+}
+export function volumeTransform(v){if(v.grid?.indexToWorld){const m=v.grid.indexToWorld;if(m.length!==16||!m.every(Number.isFinite)||Math.abs(m[3])+Math.abs(m[7])+Math.abs(m[11])+Math.abs(m[15]-1)>1e-10)throw Error('Invalid affine volume transform');inverse(m);return [...m];}
+    const min=v.min||[-1,-1,-1],max=v.max||[1,1,1],dims=v.grid?.dimensions||[1,1,1];if(min.length!==3||max.length!==3||![...min,...max].every(Number.isFinite)||min.some((x,i)=>x>=max[i]))throw Error('Invalid volume bounds');const scale=max.map((x,i)=>(x-min[i])/dims[i]),position=min.map((x,i)=>x+.5*scale[i]);return compose({position,rotation:[0,0,0],scale});}
+export function sparseGrid(grid,{threshold=0}={}){if(!grid?.data||!Number.isFinite(threshold)||threshold<0)throw Error('Sparse conversion requires a dense grid');const dims=grid.dimensions,blocks=[];for(let z=0;z<Math.ceil(dims[2]/8);z++)for(let y=0;y<Math.ceil(dims[1]/8);y++)for(let x=0;x<Math.ceil(dims[0]/8);x++){const values=new Array(512).fill(0);let active=false;for(let k=0;k<8;k++)for(let j=0;j<8;j++)for(let i=0;i<8;i++){const X=x*8+i,Y=y*8+j,Z=z*8+k;if(X>=dims[0]||Y>=dims[1]||Z>=dims[2])continue;const v=grid.data[(Z*dims[1]+Y)*dims[0]+X];if(v>threshold){values[(k*8+j)*8+i]=v;active=true;}}if(active)blocks.push({coord:[x,y,z],values});}return {dimensions:[...dims],indexToWorld:grid.indexToWorld?[...grid.indexToWorld]:undefined,blocks,background:0};}
+export class DensityField {
+    constructor(volume){validateVolume(volume);this.volume=volume;this.dimensions=volume.grid?.dimensions||[1,1,1];this.inverse=inverse(volumeTransform(volume));this.blocks=new Map((volume.grid?.blocks||[]).map(b=>[b.coord.join(','),b.values]));this.majorant=(volume.density??1)*(volume.grid?Math.max(0,...(volume.grid.data?Array.from(volume.grid.data).reduce((a,v)=>{if(v>a[0])a[0]=v;return a;},[0]):volume.grid.blocks.map(b=>b.values.reduce((a,v)=>Math.max(a,v),0)))):1);}
+    contains(point){const p=transformPoint(this.inverse,point);return p.every((x,i)=>x>=-.5&&x<this.dimensions[i]-.5);}
+    voxel(x,y,z){const d=this.dimensions;if(x<0||y<0||z<0||x>=d[0]||y>=d[1]||z>=d[2])return 0;const g=this.volume.grid;if(!g)return 1;if(g.data)return g.data[(z*d[1]+y)*d[0]+x];const b=this.blocks.get(`${x>>3},${y>>3},${z>>3}`);return b?.[((z&7)*8+(y&7))*8+(x&7)]||0;}
+    sample(p){const q=transformPoint(this.inverse,p),d=this.dimensions;if(q.some((x,i)=>x<-.5||x>d[i]-.5))return 0;if(!this.volume.grid)return this.volume.density??1;const base=q.map(Math.floor),f=q.map((x,i)=>x-base[i]);let value=0;for(let z=0;z<2;z++)for(let y=0;y<2;y++)for(let x=0;x<2;x++)value+=this.voxel(base[0]+x,base[1]+y,base[2]+z)*(x?f[0]:1-f[0])*(y?f[1]:1-f[1])*(z?f[2]:1-f[2]);return value*(this.volume.density??1);}
+}
+export function densityMixture(fields,p){const sampled=fields.map(f=>({field:f,density:f.sample(p)})),priority=sampled.filter(s=>s.field.contains(p)&&s.field.volume.replace).reduce((n,s)=>Math.max(n,s.field.volume.priority??0),-Infinity),active=sampled.filter(s=>s.density>0&&(s.field.volume.priority??0)>=priority);return {density:active.reduce((n,s)=>n+s.density,0),active};}
+export function proceduralDensity({dimensions=[24,24,24],seed=1,frequency=3}={}){if(dimensions.length!==3||dimensions.some(x=>!Number.isInteger(x)||x<2||x>128))throw Error('Invalid procedural volume size');const data=[],[nx,ny,nz]=dimensions;for(let z=0;z<nz;z++)for(let y=0;y<ny;y++)for(let x=0;x<nx;x++){const p=[(x+.5)/nx*2-1,(y+.5)/ny*2-1,(z+.5)/nz*2-1],radial=clamp(1-Math.hypot(...p),0,1),n=.5+.5*Math.sin(p[0]*frequency*3+seed)*Math.cos(p[1]*frequency*4-seed*.7)*Math.sin(p[2]*frequency*5+seed*.3);data.push(radial*n);}return sparseGrid({dimensions,data});}

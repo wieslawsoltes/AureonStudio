@@ -1,0 +1,8 @@
+import test from 'node:test';import assert from 'node:assert/strict';
+import {bevelMesh} from '../src/geometry/bevel.js';import {createPrimitive} from '../src/geometry/primitives.js';import {topology,signedVolume} from '../src/geometry/boolean.js';
+const closed=m=>{const t=topology(m);assert.equal(t.boundary+t.nonManifold+t.inconsistent,0);assert.ok(signedVolume(m)>0);};
+for(const segments of [1,3,8])test(`Segmented bevel ${segments}: closed topology, no input mutation`,()=>{const m=createPrimitive('box',{}),before=JSON.stringify(m),out=bevelMesh(m,.1,{segments});closed(out);assert.equal(JSON.stringify(m),before);assert.ok(out.faces.length>m.faces.length);assert.ok(signedVolume(out)<signedVolume(m));assert.equal(out.faceMaterials.length,out.faces.length);});
+test('Bevel supports a reflex concave extruded L profile',()=>{const ring=[[0,0],[2,0],[2,1],[1,1],[1,2],[0,2]],m={positions:[...ring.map(([x,z])=>[x,0,z]).flat(),...ring.map(([x,z])=>[x,1,z]).flat()],faces:[[0,1,2,3,4,5],[11,10,9,8,7,6]],uvs:[]};for(let i=0;i<6;i++)m.faces.push([i,i+6,(i+1)%6+6,(i+1)%6]);if(signedVolume(m)<0)m.faces.forEach(f=>f.reverse());closed(bevelMesh(m,.05,{segments:4}));});
+test('Coplanar triangles are dissolved before beveling',()=>{const m=createPrimitive('box',{});m.faces=m.faces.flatMap(f=>[[f[0],f[1],f[2]],[f[0],f[2],f[3]]]);closed(bevelMesh(m,.1,{segments:3}));});
+test('Selected edges create manifold corner transitions',()=>{closed(bevelMesh(createPrimitive('box',{}),.1,{segments:4,edges:[[0,1]]}));});
+test('Bevel overlap fails explicitly and invalid segment counts reject',()=>{assert.throws(()=>bevelMesh(createPrimitive('box',{}),5),/overlap/);assert.throws(()=>bevelMesh(createPrimitive('box',{}),.1,{segments:0}),/Invalid/);});
