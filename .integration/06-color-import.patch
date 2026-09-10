@@ -1,0 +1,8 @@
+diff --git a/src/ui/advanced.js b/src/ui/advanced.js
+--- a/src/ui/advanced.js
++++ b/src/ui/advanced.js
+@@ -4,3 +4,3 @@
+ import {newObject,material,worldMatrix,validateDocument} from '../scene/document.js';
+-import {inverse,matMul,transformPoint,transformVector,normalize,sub,add,mul,clamp} from '../core/math.js';
++import {inverse,matMul,transformPoint,transformVector,normalize,sub,add,mul,clamp,srgbToLinear} from '../core/math.js';
+ import {cloneMesh,vertex,bounds} from '../geometry/mesh.js';

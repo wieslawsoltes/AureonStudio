@@ -1,0 +1,13 @@
+diff --git a/src/volumes/grid.js b/src/volumes/grid.js
+index 62ec2ea..dd66e8a 100644
+--- a/src/volumes/grid.js
++++ b/src/volumes/grid.js
+@@ -21,2 +21,3 @@ export class DensityField {
+     constructor(volume){validateVolume(volume);this.volume=volume;this.dimensions=volume.grid?.dimensions||[1,1,1];this.inverse=inverse(volumeTransform(volume));this.blocks=new Map((volume.grid?.blocks||[]).map(b=>[b.coord.join(','),b.values]));this.majorant=(volume.density??1)*(volume.grid?Math.max(0,...(volume.grid.data?Array.from(volume.grid.data).reduce((a,v)=>{if(v>a[0])a[0]=v;return a;},[0]):volume.grid.blocks.map(b=>b.values.reduce((a,v)=>Math.max(a,v),0)))):1);}
++    contains(point){const p=transformPoint(this.inverse,point);return p.every((x,i)=>x>=-.5&&x<this.dimensions[i]-.5);}
+     voxel(x,y,z){const d=this.dimensions;if(x<0||y<0||z<0||x>=d[0]||y>=d[1]||z>=d[2])return 0;const g=this.volume.grid;if(!g)return 1;if(g.data)return g.data[(z*d[1]+y)*d[0]+x];const b=this.blocks.get(`${x>>3},${y>>3},${z>>3}`);return b?.[((z&7)*8+(y&7))*8+(x&7)]||0;}
+@@ -24,3 +25,3 @@ export class DensityField {
+ }
+-export function densityMixture(fields,p){const sampled=fields.map(f=>({field:f,density:f.sample(p)})),priority=sampled.filter(s=>s.density>0&&s.field.volume.replace).reduce((n,s)=>Math.max(n,s.field.volume.priority??0),-Infinity),active=sampled.filter(s=>s.density>0&&(s.field.volume.priority??0)>=priority);return {density:active.reduce((n,s)=>n+s.density,0),active};}
++export function densityMixture(fields,p){const sampled=fields.map(f=>({field:f,density:f.sample(p)})),priority=sampled.filter(s=>s.field.contains(p)&&s.field.volume.replace).reduce((n,s)=>Math.max(n,s.field.volume.priority??0),-Infinity),active=sampled.filter(s=>s.density>0&&(s.field.volume.priority??0)>=priority);return {density:active.reduce((n,s)=>n+s.density,0),active};}
+ export function proceduralDensity({dimensions=[24,24,24],seed=1,frequency=3}={}){if(dimensions.length!==3||dimensions.some(x=>!Number.isInteger(x)||x<2||x>128))throw Error('Invalid procedural volume size');const data=[],[nx,ny,nz]=dimensions;for(let z=0;z<nz;z++)for(let y=0;y<ny;y++)for(let x=0;x<nx;x++){const p=[(x+.5)/nx*2-1,(y+.5)/ny*2-1,(z+.5)/nz*2-1],radial=clamp(1-Math.hypot(...p),0,1),n=.5+.5*Math.sin(p[0]*frequency*3+seed)*Math.cos(p[1]*frequency*4-seed*.7)*Math.sin(p[2]*frequency*5+seed*.3);data.push(radial*n);}return sparseGrid({dimensions,data});}

@@ -1,0 +1,43 @@
+diff --git a/tests/gpu-regression.py b/tests/gpu-regression.py
+index ecf7d27..df72843 100644
+--- a/tests/gpu-regression.py
++++ b/tests/gpu-regression.py
+@@ -54,2 +54,3 @@ try:
+         page.on('pageerror',lambda e: report['errors'].append(str(e)))
++        page.on('console',lambda m: print('BROWSER',m.type,m.text,flush=True) if m.type=='error' or m.text.startswith('GPU phase:') else None)
+         page.goto(base+'/tests/production-gpu.html')
+@@ -59,3 +60,4 @@ try:
+             report['production']=page.evaluate('window.report || null')
+-            page.screenshot(path=str(out/'production.png'))
++            try: page.screenshot(path=str(out/'production.png'),timeout=5000)
++            except Exception as capture_error: report['captureWarning']=str(capture_error)
+         check('Production shader, transport, example scene and AOV suite',report['production']['status']=='passed',report['production'].get('failure'))
+@@ -87,2 +89,12 @@ try:
+         check('No uncaught JavaScript errors in renderer and failure recovery tests',not report['errors'],report['errors'])
++        advanced=browser.new_page()
++        advanced.on('pageerror',lambda e: report['errors'].append(str(e)))
++        advanced.goto(base+'/tests/advanced-gpu.html')
++        try: advanced.wait_for_function('window.done===true',timeout=300000)
++        finally:
++            report['advanced']=advanced.evaluate('window.report || null')
++            try: advanced.screenshot(path=str(out/'advanced.png'),timeout=5000)
++            except Exception as capture_error: report['captureWarning']=str(capture_error)
++        if report['advanced']['status']!='passed':raise RuntimeError('Advanced GPU regression failed: '+str(report['advanced'].get('failure')))
++        if report['errors']:raise RuntimeError('Uncaught advanced test errors: '+str(report['errors']))
+         browser.close()
+diff --git a/tests/production-gpu.html b/tests/production-gpu.html
+index 8eda78e..1a23b23 100644
+--- a/tests/production-gpu.html
++++ b/tests/production-gpu.html
+@@ -22,3 +22,3 @@ let renderer;
+ try{
+- renderer=window.renderer=await new Renderer(document.querySelector('canvas'),(message,type)=>{if(type==='error')report.errors.push(message);}).init();
++ renderer=window.renderer=await new Renderer(document.querySelector('canvas'),(message,type)=>{report.phase=message;console.log('GPU phase: '+message);if(type==='error')report.errors.push(message);}).init();
+  renderer.device.addEventListener('uncapturederror',e=>report.errors.push(e.error.message));
+diff --git a/tests/volumes-assets.test.mjs b/tests/volumes-assets.test.mjs
+index b0ce11a..acb5ebe 100644
+--- a/tests/volumes-assets.test.mjs
++++ b/tests/volumes-assets.test.mjs
+@@ -4 +4,2 @@ test('Nested replacement volumes choose priority while additive media sum extinc
+ test('Packed texture/volume metadata keeps graph offsets and float-aligned voxel tables',()=>{const d=emptyDocument();d.textures=[createPaintTexture({size:2,udim:true})];d.volumes=[{name:'Fog',min:[-1,0,-1],max:[1,2,1],density:2,color:[.9,.8,.7],grid:proceduralDensity({dimensions:[8,8,8]})}];const a=compileSceneAssets(d);assert.equal(a.textureCount,1);assert.equal(a.volumeCount,1);assert.equal(a.data.length%16,0);assert.equal(a.data[a.textureOffset*16],1);const off=a.volumeOffset*16;assert.deepEqual(Array.from(a.data.slice(off,off+4)),[8,8,8,2]);assert.ok(a.data[off+7]>0);assert.equal(a.data[off+4]%16,0);assert.equal(a.sources.length,1);assert.equal(a.volumeBounds.min[1],0);});
++test('UDIM direct lookup table distinguishes absent tiles and physical layer zero',()=>{const d=emptyDocument();d.textures=[{kind:'udim',tiles:{1001:createPaintTexture({size:2}),2000:createPaintTexture({size:2})}}];const a=compileSceneAssets(d),r=a.textureOffset*16,start=a.data[r+3];assert.equal(a.data[r+2],1000);assert.equal(start%16,0);assert.equal(a.data[start],1);assert.equal(a.data[start+500],0);assert.equal(a.data[start+999],2);});

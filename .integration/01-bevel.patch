@@ -1,0 +1,17 @@
+diff --git a/src/geometry/bevel.js b/src/geometry/bevel.js
+index 49f9331..8d1877c 100644
+--- a/src/geometry/bevel.js
++++ b/src/geometry/bevel.js
+@@ -24,3 +24,3 @@ function dissolveCoplanar(mesh){
+ function stitch(mesh,eps){const points=Array.from({length:mesh.positions.length/3},(_,i)=>vertex(mesh,i));if(points.length>16000)throw Error('Bevel stitching budget exceeded');mesh.faces=mesh.faces.map(f=>f.flatMap((id,i)=>{const next=f[(i+1)%f.length],a=points[id],d=sub(points[next],a),len=dot(d,d);if(len<eps*eps)return [];const cuts=[];for(let j=0;j<points.length;j++){if(j===id||j===next)continue;const t=dot(sub(points[j],a),d)/len;if(t>1e-8&&t<1-1e-8&&Math.hypot(...sub(points[j],add(a,mul(d,t))))<eps)cuts.push({j,t});}cuts.sort((a,b)=>a.t-b.t);return [id,...cuts.map(c=>c.j)];}));}
+-export function bevelMesh(input,width=.05,{segments=1,profile=.5,edges=null,weights={},dissolve=true}={}){
++export function bevelMesh(input,width=.05,{segments=1,profile=.5,edges=null,weights={},dissolve=true,selection='all',angle=30}={}){
+     validateMesh(input);
+@@ -29,5 +29,6 @@ export function bevelMesh(input,width=.05,{segments=1,profile=.5,edges=null,weig
+     const m=dissolve?dissolveCoplanar(canonicalize(input)):canonicalize(input),faces=m.faces,points=Array.from({length:m.positions.length/3},(_,i)=>vertex(m,i)),ns=faces.map(f=>faceNormal(m,f)),adj=adjacency(faces);
++    if(!['all','sharp'].includes(selection)||!Number.isFinite(angle)||angle<0||angle>180)throw Error('Invalid bevel edge selection');
+     const selected=edges?new Set(edges.map(e=>Array.isArray(e)?edgeKey(...e):e)):null;
+     if(selected)for(const e of selected)if(!adj.has(e))throw Error(`Unknown bevel edge ${e}`);
+-    const offsets=new Map();for(const [key,es] of adj){if(es.length!==2)throw Error('Invalid bevel adjacency');const w=weights[key]??1;if(!Number.isFinite(w)||w<0||w>1)throw Error('Bevel weights must be in [0, 1]');offsets.set(key,(!selected||selected.has(key))&&dot(ns[es[0].fi],ns[es[1].fi])<1-1e-10?width*w:0);}
++    const offsets=new Map();for(const [key,es] of adj){if(es.length!==2)throw Error('Invalid bevel adjacency');const w=weights[key]??1;if(!Number.isFinite(w)||w<0||w>1)throw Error('Bevel weights must be in [0, 1]');offsets.set(key,(!selected||selected.has(key))&&dot(ns[es[0].fi],ns[es[1].fi])<(selection==='sharp'?Math.min(1-1e-10,Math.cos(angle*Math.PI/180)):1-1e-10)?width*w:0);}
+     const out={positions:[],faces:[],uvs:[],smooth:true,flatFaces:[],faceMaterials:[]},corners=new Map(),caps=points.map(()=>[]),welded=new Map();
