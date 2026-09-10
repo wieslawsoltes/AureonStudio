@@ -44,7 +44,21 @@ fn sampleBitmap(index:u32,uv:vec2f,lod:f32)->vec4f {
  if(index>=u32(cam.assets.y)){return vec4f(1.);}
  let desc=graphInstruction(u32(cam.assets.x)+index);
  if(desc.op.x==0.){return textureSampleLevel(bitmapArray,bitmapSampler,uv,i32(desc.op.y),lod);}
- let level=clamp(lod,0.,f32(textureNumLevels(bitmapArray)-1u));let lo=i32(floor(level));let hi=min(lo+1,i32(textureNumLevels(bitmapArray))-1);return mix(udimLevel(desc,uv,lo),udimLevel(desc,uv,hi),fract(level));
+ let last=i32(textureNumLevels(bitmapArray))-1;
+ let level=clamp(lod,0.,f32(last));let lo=i32(floor(level));let fraction=fract(level);
+ var result=vec4f(0.);
+ // A descriptor-bounded loop shares one texture-load path across the
+ // eight trilinear taps. The host writes exactly eight taps for UDIM.
+ // This avoids exponential driver inlining at multiple shading sites.
+ for(var tap=0u;tap<min(8u,u32(desc.extra.x));tap++){
+  let upper=tap>=4u;let mip=min(lo+select(0,1,upper),last);
+  let p=uv*vec2f(textureDimensions(bitmapArray,mip))-.5;
+  let f=fract(p);let offset=vec2i(i32(tap&1u),i32((tap>>1u)&1u));
+  let w=select(1.-f,f,offset==vec2i(1));
+  let weight=w.x*w.y*select(1.-fraction,fraction,upper);
+  result+=udimTexel(desc,vec2i(floor(p))+offset,mip)*weight;
+ }
+ return result;
 }
 // Graph DAGs are specialized here by materials/wgsl-graph.js before pipeline creation.
 fn surfaceMaterial(index:u32,p:vec3f,uv:vec2f)->Material {
